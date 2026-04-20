@@ -31,21 +31,46 @@ import javafx.stage.Stage;
 import model.InventoryItem;
 import model.ProductItem;
 import model.Supplier;
+import repository.DatabaseException;
 import service.InventoryService;
 
 /**
  * JavaFX dashboard for the inventory subsystem.
  */
 public class InventoryDashboardApp extends Application {
+    /**
+     * Service used by the UI for all inventory operations.
+     */
     private final InventoryService inventoryService = new InventoryService();
 
+    /**
+     * JavaFX list that backs the table; changing this list refreshes the table rows.
+     */
     private final ObservableList<InventoryItem> inventoryRows = FXCollections.observableArrayList();
 
+    /**
+     * Main table that displays inventory rows from MySQL.
+     */
     private TableView<InventoryItem> inventoryTable;
+
+    /**
+     * Search box in the header.
+     */
     private TextField searchField;
+
+    /**
+     * Footer label for success and error messages.
+     */
     private Label statusLabel;
+
+    /**
+     * Header summary value showing total inventory count.
+     */
     private Label totalItemsValue;
 
+    /**
+     * Form fields used to create or edit inventory, product, and supplier data.
+     */
     private TextField inventoryIdField;
     private TextField productIdField;
     private TextField productNameField;
@@ -60,24 +85,32 @@ public class InventoryDashboardApp extends Application {
     private TextField quantityField;
     private TextField reorderLevelField;
 
+    /**
+     * JavaFX entry point that builds the window and loads inventory from MySQL.
+     *
+     * @param stage primary application window
+     */
     @Override
     public void start(Stage stage) {
-        seedInventory();
-
         BorderPane root = new BorderPane();
         root.setTop(createHeader());
         root.setCenter(createContent());
         root.setBottom(createFooter());
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #f7f8fc, #eef2f7);");
 
-        refreshTables(inventoryService.viewInventory());
-
         Scene scene = new Scene(root, 1400, 860);
         stage.setTitle("Department Store Inventory Dashboard");
         stage.setScene(scene);
         stage.show();
+
+        showAllInventory("Loaded inventory from database.");
     }
 
+    /**
+     * Builds the top header with title, search controls, and item count.
+     *
+     * @return header layout
+     */
     private VBox createHeader() {
         Label title = new Label("Department Store Inventory Dashboard");
         title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
@@ -93,8 +126,7 @@ public class InventoryDashboardApp extends Application {
         Button resetButton = createSecondaryButton("Show All");
         resetButton.setOnAction(event -> {
             searchField.clear();
-            refreshTables(inventoryService.viewInventory());
-            setStatus("Showing all inventory items.", false);
+            showAllInventory("Showing all inventory items.");
         });
 
         Region spacer = new Region();
@@ -109,6 +141,12 @@ public class InventoryDashboardApp extends Application {
         return header;
     }
 
+    /**
+     * Builds the small summary card showing the total number of inventory rows.
+     *
+     * @param label label displayed above the count
+     * @return summary card layout
+     */
     private VBox createSummaryCard(String label) {
         Label name = new Label(label);
         name.setStyle("-fx-font-size: 13px; -fx-text-fill: #5e7389;");
@@ -127,6 +165,11 @@ public class InventoryDashboardApp extends Application {
         return card;
     }
 
+    /**
+     * Builds the center content area with the table and right-side form.
+     *
+     * @return content layout
+     */
     private BorderPane createContent() {
         inventoryTable = buildInventoryTable();
 
@@ -142,6 +185,11 @@ public class InventoryDashboardApp extends Application {
         return inventoryTabLayout;
     }
 
+    /**
+     * Builds the toolbar of inventory actions.
+     *
+     * @return toolbar with add, update, remove, load, and clear buttons
+     */
     private ToolBar createInventoryToolbar() {
         Button addButton = createPrimaryButton("Add Item");
         addButton.setOnAction(event -> addItem());
@@ -161,6 +209,11 @@ public class InventoryDashboardApp extends Application {
         return new ToolBar(addButton, updateButton, removeButton, new Separator(), loadSelectedButton, clearButton);
     }
 
+    /**
+     * Builds the form used to add a new item or edit the selected item.
+     *
+     * @return form panel layout
+     */
     private VBox createFormPanel() {
         Label title = new Label("Inventory Item Form");
         title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
@@ -242,6 +295,11 @@ public class InventoryDashboardApp extends Application {
         return panel;
     }
 
+    /**
+     * Wraps the form in a scroll pane so all fields remain reachable on smaller windows.
+     *
+     * @return scrollable form panel
+     */
     private ScrollPane createFormScrollPane() {
         VBox formPanel = createFormPanel();
 
@@ -257,6 +315,11 @@ public class InventoryDashboardApp extends Application {
         return scrollPane;
     }
 
+    /**
+     * Builds and configures the inventory table columns.
+     *
+     * @return configured inventory table
+     */
     private TableView<InventoryItem> buildInventoryTable() {
         TableView<InventoryItem> table = createBaseTable();
         table.getColumns().add(createTextColumn("Inventory ID", item -> item.getInventoryID(), 105));
@@ -274,6 +337,11 @@ public class InventoryDashboardApp extends Application {
         return table;
     }
 
+    /**
+     * Creates common table settings shared by the inventory table.
+     *
+     * @return base table instance
+     */
     private TableView<InventoryItem> createBaseTable() {
         TableView<InventoryItem> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -284,6 +352,14 @@ public class InventoryDashboardApp extends Application {
         return table;
     }
 
+    /**
+     * Creates a table column that displays string data from an InventoryItem.
+     *
+     * @param title column title
+     * @param provider function that extracts the value from a row item
+     * @param width preferred column width
+     * @return configured text column
+     */
     private TableColumn<InventoryItem, String> createTextColumn(String title, ValueProvider<String> provider, double width) {
         TableColumn<InventoryItem, String> column = new TableColumn<>(title);
         column.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(provider.get(cellData.getValue())));
@@ -291,6 +367,14 @@ public class InventoryDashboardApp extends Application {
         return column;
     }
 
+    /**
+     * Creates a table column that displays integer data from an InventoryItem.
+     *
+     * @param title column title
+     * @param provider function that extracts the value from a row item
+     * @param width preferred column width
+     * @return configured number column
+     */
     private TableColumn<InventoryItem, Number> createIntegerColumn(String title, IntValueProvider provider, double width) {
         TableColumn<InventoryItem, Number> column = new TableColumn<>(title);
         column.setCellValueFactory(cellData -> new ReadOnlyIntegerWrapper(provider.get(cellData.getValue())));
@@ -298,6 +382,11 @@ public class InventoryDashboardApp extends Application {
         return column;
     }
 
+    /**
+     * Builds the footer where status and error messages are shown.
+     *
+     * @return footer layout
+     */
     private HBox createFooter() {
         statusLabel = new Label("Ready.");
         statusLabel.setTextFill(Color.web("#4f6479"));
@@ -309,25 +398,39 @@ public class InventoryDashboardApp extends Application {
         return footer;
     }
 
+    /**
+     * Runs a keyword search and refreshes the table with the matching rows.
+     */
     private void applySearch() {
-        List<InventoryItem> results = inventoryService.searchInventory(searchField.getText());
-        refreshTables(results);
-        setStatus("Search returned " + results.size() + " item(s).", false);
+        try {
+            List<InventoryItem> results = inventoryService.searchInventory(searchField.getText());
+            refreshTables(results);
+            setStatus("Search returned " + results.size() + " item(s).", false);
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to search inventory", exception);
+        }
     }
 
+    /**
+     * Reads the form, creates a new inventory item, and saves it through the service.
+     */
     private void addItem() {
         try {
             InventoryItem inventoryItem = buildInventoryItemFromForm();
             inventoryService.addItem(inventoryItem.getProductItem(), inventoryItem);
             refreshTables(inventoryService.viewInventory());
-            inventoryTable.getSelectionModel().select(inventoryItem);
             setStatus("Added inventory item " + inventoryItem.getInventoryID() + ".", false);
             clearForm();
         } catch (IllegalArgumentException exception) {
             showError("Unable to add inventory item", exception.getMessage());
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to add inventory item", exception);
         }
     }
 
+    /**
+     * Updates the selected inventory item using values currently typed in the form.
+     */
     private void updateSelectedQuantity() {
         InventoryItem selectedItem = inventoryTable.getSelectionModel().getSelectedItem();
 
@@ -344,24 +447,36 @@ public class InventoryDashboardApp extends Application {
                 throw new IllegalArgumentException("Quantity and reorder level cannot be negative.");
             }
 
-            inventoryService.updateInventoryQuantity(selectedItem, newQuantity);
-            inventoryService.updateItem(selectedItem.getProductItem(), requireValue(productNameField, "Product name"),
-                    descriptionArea.getText().trim());
-            selectedItem.setColor(requireValue(colorField, "Color"));
-            selectedItem.setSize(requireValue(sizeField, "Size"));
-            selectedItem.setReorderLevel(reorderLevel);
-            selectedItem.getProductItem().setSupplier(buildSupplierFromForm());
+            String inventoryID = requireValue(inventoryIdField, "Inventory ID");
+            if (!inventoryID.equals(selectedItem.getInventoryID())) {
+                throw new IllegalArgumentException("Inventory ID cannot be changed while updating an item.");
+            }
+
+            Supplier supplier = buildSupplierFromForm();
+            ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
+                    requireValue(productNameField, "Product name"),
+                    descriptionArea.getText().trim(), supplier);
+            InventoryItem updatedItem = new InventoryItem(inventoryID,
+                    requireValue(colorField, "Color"), requireValue(sizeField, "Size"),
+                    newQuantity, reorderLevel, product);
+
+            inventoryService.updateInventoryItem(updatedItem);
 
             refreshTables(inventoryService.viewInventory());
-            inventoryTable.getSelectionModel().select(selectedItem);
-            setStatus("Updated quantity for " + selectedItem.getInventoryID() + ".", false);
+            selectItemByInventoryId(inventoryID);
+            setStatus("Updated inventory item " + inventoryID + ".", false);
         } catch (NumberFormatException exception) {
             showError("Invalid number", "Quantity and reorder level must be whole numbers.");
         } catch (IllegalArgumentException exception) {
             showError("Unable to update item", exception.getMessage());
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to update item", exception);
         }
     }
 
+    /**
+     * Removes the currently selected inventory item.
+     */
     private void removeSelectedItem() {
         InventoryItem selectedItem = inventoryTable.getSelectionModel().getSelectedItem();
 
@@ -377,14 +492,54 @@ public class InventoryDashboardApp extends Application {
             setStatus("Removed inventory item " + selectedItem.getInventoryID() + ".", false);
         } catch (IllegalArgumentException exception) {
             showError("Unable to remove item", exception.getMessage());
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to remove item", exception);
         }
     }
 
+    /**
+     * Replaces table rows and updates the total item count.
+     *
+     * @param visibleItems rows that should appear in the table
+     */
     private void refreshTables(List<InventoryItem> visibleItems) {
         inventoryRows.setAll(visibleItems);
-        totalItemsValue.setText(String.valueOf(inventoryService.viewInventory().size()));
+        totalItemsValue.setText(String.valueOf(inventoryService.countInventoryItems()));
     }
 
+    /**
+     * Loads every inventory item from the service and shows a status message.
+     *
+     * @param statusMessage message shown after a successful load
+     */
+    private void showAllInventory(String statusMessage) {
+        try {
+            refreshTables(inventoryService.viewInventory());
+            setStatus(statusMessage, false);
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to load inventory", exception);
+        }
+    }
+
+    /**
+     * Selects a table row after reloading from the database.
+     *
+     * @param inventoryID inventory ID to select
+     */
+    private void selectItemByInventoryId(String inventoryID) {
+        for (InventoryItem item : inventoryRows) {
+            if (item.getInventoryID().equals(inventoryID)) {
+                inventoryTable.getSelectionModel().select(item);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Copies the selected table row into the form fields.
+     *
+     * @param inventoryItem selected row, or null when nothing is selected
+     */
     private void loadSelectedIntoForm(InventoryItem inventoryItem) {
         if (inventoryItem == null) {
             return;
@@ -408,6 +563,9 @@ public class InventoryDashboardApp extends Application {
         reorderLevelField.setText(String.valueOf(inventoryItem.getReorderLevel()));
     }
 
+    /**
+     * Clears every form field and removes the current table selection.
+     */
     private void clearForm() {
         inventoryIdField.clear();
         productIdField.clear();
@@ -425,6 +583,11 @@ public class InventoryDashboardApp extends Application {
         inventoryTable.getSelectionModel().clearSelection();
     }
 
+    /**
+     * Converts form field values into an InventoryItem object.
+     *
+     * @return inventory item ready to be validated and saved
+     */
     private InventoryItem buildInventoryItemFromForm() {
         try {
             int quantity = Integer.parseInt(quantityField.getText().trim());
@@ -447,51 +610,48 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Converts supplier form fields into a Supplier object.
+     *
+     * @return supplier from the form
+     */
     private Supplier buildSupplierFromForm() {
         return new Supplier(requireValue(supplierIdField, "Supplier ID"), requireValue(supplierAddressField, "Supplier address"),
                 requireValue(supplierEmailField, "Supplier email"), requireValue(supplierNameField, "Supplier name"),
                 requireValue(supplierContactField, "Supplier contact"));
     }
 
-    private void seedInventory() {
-        if (!inventoryService.viewInventory().isEmpty()) {
-            return;
-        }
-
-        Supplier outerwearSupplier = new Supplier("SUP-201", "411 Summit Ave, Denver, CO", "orders@northernwear.com",
-                "Northern Wear", "Taylor Brooks");
-        Supplier footwearSupplier = new Supplier("SUP-202", "88 Harbor Blvd, Long Beach, CA", "sales@seasidefoot.com",
-                "Seaside Footwear", "Morgan Patel");
-        Supplier accessoriesSupplier = new Supplier("SUP-203", "102 Cedar St, Portland, OR", "ops@evergreenacc.com",
-                "Evergreen Accessories", "Riley Chen");
-
-        inventoryService.addItem(new ProductItem("PROD-1001", "Winter Parka", "Insulated coat for seasonal display",
-                        outerwearSupplier),
-                new InventoryItem("INV-1001", "Navy", "L", 12, 10,
-                        new ProductItem("PROD-1001", "Winter Parka", "Insulated coat for seasonal display",
-                                outerwearSupplier)));
-        inventoryService.addItem(new ProductItem("PROD-1002", "Leather Boots", "Water-resistant ankle boots",
-                        footwearSupplier),
-                new InventoryItem("INV-1002", "Brown", "9", 6, 8,
-                        new ProductItem("PROD-1002", "Leather Boots", "Water-resistant ankle boots", footwearSupplier)));
-        inventoryService.addItem(new ProductItem("PROD-1003", "Silk Scarf", "Luxury scarf for gift section",
-                        accessoriesSupplier),
-                new InventoryItem("INV-1003", "Emerald", "One Size", 18, 7,
-                        new ProductItem("PROD-1003", "Silk Scarf", "Luxury scarf for gift section", accessoriesSupplier)));
-    }
-
+    /**
+     * Creates a bold label for a form field.
+     *
+     * @param text label text
+     * @return styled label
+     */
     private Label createFieldLabel(String text) {
         Label label = new Label(text);
         label.setStyle("-fx-font-weight: bold; -fx-text-fill: #334a60;");
         return label;
     }
 
+    /**
+     * Creates a text field with placeholder text.
+     *
+     * @param prompt placeholder shown before the user types
+     * @return text field
+     */
     private TextField createTextField(String prompt) {
         TextField field = new TextField();
         field.setPromptText(prompt);
         return field;
     }
 
+    /**
+     * Reads and validates a required text field.
+     *
+     * @param field field to read
+     * @param fieldName user-facing field name for error messages
+     * @return trimmed field value
+     */
     private String requireValue(TextField field, String fieldName) {
         String value = field.getText().trim();
 
@@ -502,6 +662,12 @@ public class InventoryDashboardApp extends Application {
         return value;
     }
 
+    /**
+     * Creates a primary action button.
+     *
+     * @param text button label
+     * @return styled button
+     */
     private Button createPrimaryButton(String text) {
         Button button = new Button(text);
         button.setStyle("-fx-background-color: #1d6fdc; -fx-text-fill: white; -fx-font-weight: bold;"
@@ -509,6 +675,12 @@ public class InventoryDashboardApp extends Application {
         return button;
     }
 
+    /**
+     * Creates a secondary action button.
+     *
+     * @param text button label
+     * @return styled button
+     */
     private Button createSecondaryButton(String text) {
         Button button = new Button(text);
         button.setStyle("-fx-background-color: #eef3fb; -fx-text-fill: #17324d; -fx-font-weight: bold;"
@@ -516,11 +688,23 @@ public class InventoryDashboardApp extends Application {
         return button;
     }
 
+    /**
+     * Updates the footer status message and color.
+     *
+     * @param message message to display
+     * @param error true when the message should use the error color
+     */
     private void setStatus(String message, boolean error) {
         statusLabel.setText(message);
         statusLabel.setTextFill(error ? Color.web("#b42318") : Color.web("#4f6479"));
     }
 
+    /**
+     * Shows an error dialog and mirrors the error in the footer.
+     *
+     * @param title dialog title
+     * @param message error message
+     */
     private void showError(String title, String message) {
         setStatus(message, true);
         Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -530,17 +714,45 @@ public class InventoryDashboardApp extends Application {
         alert.showAndWait();
     }
 
+    /**
+     * Shows a database-specific error with setup guidance.
+     *
+     * @param title dialog title
+     * @param exception database exception from the repository layer
+     */
+    private void showDatabaseError(String title, DatabaseException exception) {
+        showError(title, exception.getMessage()
+                + "\n\nCheck that MySQL is running and database/schema.sql has been loaded.");
+    }
+
+    /**
+     * Launches the JavaFX application.
+     *
+     * @param args command-line arguments passed by Java
+     */
     public static void main(String[] args) {
         launch(args);
     }
 
     @FunctionalInterface
     private interface ValueProvider<T> {
+        /**
+         * Extracts a value from an inventory item for a table column.
+         *
+         * @param item table row item
+         * @return value displayed in the table cell
+         */
         T get(InventoryItem item);
     }
 
     @FunctionalInterface
     private interface IntValueProvider {
+        /**
+         * Extracts an integer value from an inventory item for a table column.
+         *
+         * @param item table row item
+         * @return number displayed in the table cell
+         */
         int get(InventoryItem item);
     }
 
@@ -548,9 +760,17 @@ public class InventoryDashboardApp extends Application {
      * Keeps GridPane column setup out of the form-building code.
      */
     private static final class ColumnConstraintsBuilder {
+        /**
+         * Prevents creating helper objects because this class only has static behavior.
+         */
         private ColumnConstraintsBuilder() {
         }
 
+        /**
+         * Applies consistent two-column sizing to the form grid.
+         *
+         * @param grid form grid to configure
+         */
         private static void apply(GridPane grid) {
             javafx.scene.layout.ColumnConstraints first = new javafx.scene.layout.ColumnConstraints();
             first.setMinWidth(110);
