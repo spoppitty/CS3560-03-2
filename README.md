@@ -39,3 +39,9 @@ Or run it through the helper script, which loads `.env` first:
 ```bash
 ./scripts/run-dashboard.sh
 ```
+
+On Windows PowerShell, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run-dashboard.ps1
+```
