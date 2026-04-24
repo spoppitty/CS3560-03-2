@@ -165,6 +165,13 @@ public class InventoryService {
         return inventoryRepository.countInventoryItems();
     }
 
+    public List<InventoryItem> getLowStockItems() {
+        return inventoryRepository.findAll()
+                .stream()
+                .filter(InventoryItem::isLowStock)
+                .toList();
+    }
+
     /**
      * Validates required inventory fields before saving to the database.
      *

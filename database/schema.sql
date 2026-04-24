@@ -35,3 +35,13 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     CONSTRAINT chk_inventory_reorder
         CHECK (reorder_level >= 0)
 );
+
+CREATE TABLE IF NOT EXISTS employees (
+    employee_ID VARCHAR(10) PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(100) NOT NULL,
+    role VARCHAR(10) NOT NULL,
+    CONSTRAINT chk_role CHECK (role IN ('EMP', 'MGR'))
+);

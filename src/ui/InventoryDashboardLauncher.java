@@ -16,6 +16,6 @@ public final class InventoryDashboardLauncher {
      * @param args command-line arguments passed by Java
      */
     public static void main(String[] args) {
-        InventoryDashboardApp.main(args);
+        InventorySubsystemApp.main(args);
     }
 }

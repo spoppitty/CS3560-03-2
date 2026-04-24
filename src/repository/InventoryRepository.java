@@ -10,6 +10,7 @@ import java.util.List;
 import model.InventoryItem;
 import model.ProductItem;
 import model.Supplier;
+import model.Employee;
 
 /**
  * Persists inventory data in MySQL.
