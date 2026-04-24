@@ -1147,6 +1147,27 @@ public class InventoryDashboardApp  {
     }
 
     /**
+     * Resolves the supplier for the current inventory form.
+     * Prefers the selected supplier from the combo box and falls back to
+     * the supplier detail fields when needed.
+     *
+     * @return supplier to attach to the product
+     */
+    private Supplier buildSupplierFromForm() {
+        Supplier selectedSupplier = supplierComboBox == null ? null : supplierComboBox.getValue();
+        if (selectedSupplier != null) {
+            return selectedSupplier;
+        }
+
+        return new Supplier(
+                requireValue(supplierIdFormField, "Supplier ID"),
+                requireValue(supplierAddressFormField, "Supplier address"),
+                requireValue(supplierEmailFormField, "Supplier email"),
+                requireValue(supplierNameFormField, "Supplier name"),
+                requireValue(supplierContactFormField, "Supplier contact"));
+    }
+
+    /**
      * Creates a bold label for a form field.
      *
      * @param text label text
