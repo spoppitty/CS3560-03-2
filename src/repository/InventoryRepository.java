@@ -434,4 +434,161 @@ public class InventoryRepository {
          */
         void run() throws SQLException;
     }
+
+    // suppliers
+    public List<Supplier> findAllSuppliers() {
+        String sql = """
+            SELECT supplier_id, address, email, name, contact_name
+            FROM suppliers
+            ORDER BY name, supplier_id
+            """;
+
+        List<Supplier> suppliers = new ArrayList<>();
+
+        try (Connection connection = DatabaseConnection.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql);
+            ResultSet resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                suppliers.add(new Supplier(
+                    resultSet.getString("supplier_id"),
+                    resultSet.getString("address"),
+                    resultSet.getString("email"),
+                    resultSet.getString("name"),
+                    resultSet.getString("contact_name")
+                ));
+            }
+
+            return suppliers;
+        } catch (SQLException exception) {
+            throw new DatabaseException("Unable to load suppliers from the database.", exception);
+        }
+    }
+
+    public List<Supplier> searchSuppliers(String keyword) {
+        String sql = """
+            SELECT supplier_id, address, email, name, contact_name
+            FROM suppliers
+            WHERE LOWER(supplier_id) LIKE ?
+            OR LOWER(name) LIKE ?
+            OR LOWER(email) LIKE ?
+            OR LOWER(contact_name) LIKE ?
+            OR LOWER(address) LIKE ?
+            ORDER BY name, supplier_id
+            """;
+
+        String pattern = "%" + keyword.trim().toLowerCase() + "%";
+        List<Supplier> suppliers = new ArrayList<>();
+
+        try (Connection connection = DatabaseConnection.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            for (int i = 1; i <= 5; i++) {
+                statement.setString(i, pattern);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    suppliers.add(new Supplier(
+                        resultSet.getString("supplier_id"),
+                        resultSet.getString("address"),
+                        resultSet.getString("email"),
+                        resultSet.getString("name"),
+                        resultSet.getString("contact_name")
+                    ));
+                }
+            }
+
+            return suppliers;
+        } catch (SQLException exception) {
+            throw new DatabaseException("Unable to search suppliers in the database.", exception);
+        }
+    }
+
+    public Supplier findSupplierById(String supplierID) {
+        String sql = """
+            SELECT supplier_id, address, email, name, contact_name
+            FROM suppliers
+            WHERE supplier_id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, supplierID);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return new Supplier(
+                        resultSet.getString("supplier_id"),
+                        resultSet.getString("address"),
+                        resultSet.getString("email"),
+                        resultSet.getString("name"),
+                        resultSet.getString("contact_name")
+                    );
+                }
+                return null;
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Unable to find supplier in the database.", exception);
+        }
+    }
+
+    public boolean existsBySupplierId(String supplierID) {
+        String sql = "SELECT 1 FROM suppliers WHERE supplier_id = ?";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, supplierID);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            throw new DatabaseException("Unable to check supplier in the database.", exception);
+        }
+    }
+
+    public void addSupplier(Supplier supplier) {
+        String sql = """
+            INSERT INTO suppliers (supplier_id, address, email, name, contact_name)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, supplier.getSupplierID());
+            statement.setString(2, supplier.getAddress());
+            statement.setString(3, supplier.getEmail());
+            statement.setString(4, supplier.getName());
+            statement.setString(5, supplier.getContactName());
+            statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new DatabaseException("Unable to add supplier to the database.", exception);
+        }
+    }
+
+    public boolean updateSupplier(Supplier supplier) {
+        String sql = """
+            UPDATE suppliers
+            SET address = ?, email = ?, name = ?, contact_name = ?
+            WHERE supplier_id = ?
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, supplier.getAddress());
+            statement.setString(2, supplier.getEmail());
+            statement.setString(3, supplier.getName());
+            statement.setString(4, supplier.getContactName());
+            statement.setString(5, supplier.getSupplierID());
+
+            return statement.executeUpdate() > 0;
+        } catch (SQLException exception) {
+            throw new DatabaseException("Unable to update supplier in the database.", exception);
+        }
+    }
 }

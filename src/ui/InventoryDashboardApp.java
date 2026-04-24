@@ -1,6 +1,7 @@
 package ui;
 
 import java.util.List;
+
 import javafx.application.Application;
 import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -11,6 +12,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
@@ -100,11 +102,16 @@ public class InventoryDashboardApp extends Application {
     private TextField productNameField;
     private TextField pricePerItemField;
     private TextArea descriptionArea;
-    private TextField supplierIdField;
-    private TextField supplierNameField;
-    private TextField supplierEmailField;
-    private TextField supplierContactField;
-    private TextField supplierAddressField;
+    private ComboBox<Supplier> supplierComboBox;
+    private final ObservableList<Supplier> supplierOptions = FXCollections.observableArrayList();
+    private final ObservableList<Supplier> supplierRows = FXCollections.observableArrayList();
+    private TableView<Supplier> supplierTable;
+    private TextField supplierSearchField;
+    private TextField supplierIdFormField;
+    private TextField supplierNameFormField;
+    private TextField supplierEmailFormField;
+    private TextField supplierContactFormField;
+    private TextField supplierAddressFormField;
     private TextField colorField;
     private TextField sizeField;
     private TextField quantityField;
@@ -114,6 +121,8 @@ public class InventoryDashboardApp extends Application {
             "Search by inventory ID, product, description, supplier, color, or size";
     private static final String SHIPMENT_SEARCH_PROMPT =
             "Search by shipment, order, inventory, product, supplier, or status";
+    private static final String SUPPLIER_SEARCH_PROMPT =
+            "Search by supplier ID, name, email, contact, or address";
 
     /**
      * JavaFX entry point that builds the window and loads inventory from MySQL.
@@ -133,6 +142,7 @@ public class InventoryDashboardApp extends Application {
         stage.setScene(scene);
         stage.show();
 
+        refreshSuppliers();        
         showAllInventory("Loaded inventory from database.");
     }
 
@@ -218,10 +228,12 @@ public class InventoryDashboardApp extends Application {
 
         Tab inventoryTab = new Tab("Inventory", inventoryTabLayout);
         inventoryTab.setClosable(false);
+        Tab suppliersTab = new Tab("Suppliers", createSuppliersContent());
+        suppliersTab.setClosable(false);
         Tab shipmentsTab = new Tab("Shipments", shipmentsTabLayout);
         shipmentsTab.setClosable(false);
 
-        mainTabs = new TabPane(inventoryTab, shipmentsTab);
+        mainTabs = new TabPane(inventoryTab, suppliersTab, shipmentsTab);
         mainTabs.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
             searchField.clear();
             updateSearchPrompt();
@@ -297,11 +309,12 @@ public class InventoryDashboardApp extends Application {
         descriptionArea.setPrefRowCount(3);
         descriptionArea.setWrapText(true);
 
-        supplierIdField = createTextField("SUP-204");
-        supplierNameField = createTextField("Bright Apparel");
-        supplierEmailField = createTextField("buyer@supplier.com");
-        supplierContactField = createTextField("Jordan Lee");
-        supplierAddressField = createTextField("123 Supply Rd, Salt Lake City, UT");
+        supplierComboBox = new ComboBox<>(supplierOptions);
+        supplierComboBox.setPromptText("Select a supplier");
+        supplierComboBox.setMaxWidth(Double.MAX_VALUE);
+
+        Button manageSuppliersButton = createSecondaryButton("Manage Suppliers");
+        manageSuppliersButton.setOnAction(event -> mainTabs.getSelectionModel().select(1));
         colorField = createTextField("Gray");
         sizeField = createTextField("M");
         quantityField = createTextField("25");
@@ -320,24 +333,17 @@ public class InventoryDashboardApp extends Application {
         grid.add(pricePerItemField, 1, 3);
         grid.add(createFieldLabel("Description"), 0, 4);
         grid.add(descriptionArea, 1, 4);
-        grid.add(createFieldLabel("Supplier ID"), 0, 5);
-        grid.add(supplierIdField, 1, 5);
-        grid.add(createFieldLabel("Supplier Name"), 0, 6);
-        grid.add(supplierNameField, 1, 6);
-        grid.add(createFieldLabel("Supplier Email"), 0, 7);
-        grid.add(supplierEmailField, 1, 7);
-        grid.add(createFieldLabel("Contact Name"), 0, 8);
-        grid.add(supplierContactField, 1, 8);
-        grid.add(createFieldLabel("Supplier Address"), 0, 9);
-        grid.add(supplierAddressField, 1, 9);
-        grid.add(createFieldLabel("Color"), 0, 10);
-        grid.add(colorField, 1, 10);
-        grid.add(createFieldLabel("Size"), 0, 11);
-        grid.add(sizeField, 1, 11);
-        grid.add(createFieldLabel("Quantity"), 0, 12);
-        grid.add(quantityField, 1, 12);
-        grid.add(createFieldLabel("Reorder Level"), 0, 13);
-        grid.add(reorderLevelField, 1, 13);
+        grid.add(createFieldLabel("Supplier"), 0, 5);
+        grid.add(supplierComboBox, 1, 5);
+        grid.add(manageSuppliersButton, 2, 5);
+        grid.add(createFieldLabel("Color"), 0, 6);
+        grid.add(colorField, 1, 6);
+        grid.add(createFieldLabel("Size"), 0, 7);
+        grid.add(sizeField, 1, 7);
+        grid.add(createFieldLabel("Quantity"), 0, 8);
+        grid.add(quantityField, 1, 8);
+        grid.add(createFieldLabel("Reorder Level"), 0, 9);
+        grid.add(reorderLevelField, 1, 9);
 
         ColumnConstraintsBuilder.apply(grid);
 
@@ -535,6 +541,8 @@ public class InventoryDashboardApp extends Application {
     private void applyActiveSearch() {
         if (isShipmentsTabActive()) {
             applyShipmentSearch();
+        } else if (isSuppliersTabActive()) {
+            applySupplierSearch();
         } else {
             applySearch();
         }
@@ -559,8 +567,280 @@ public class InventoryDashboardApp extends Application {
     private void showAllActiveRows() {
         if (isShipmentsTabActive()) {
             showOpenShipments("Showing shipment history.");
+        } else if (isSuppliersTabActive()) {
+            showAllSuppliers("Showing all suppliers.");
         } else {
             showAllInventory("Showing all inventory items.");
+        }
+    }
+
+    private BorderPane createSuppliersContent() {
+        supplierTable = buildSupplierTable();
+
+        VBox workspace = new VBox(16, createSupplierToolbar(), supplierTable);
+        workspace.setPadding(new Insets(20));
+        VBox.setVgrow(supplierTable, Priority.ALWAYS);
+
+        BorderPane layout = new BorderPane();
+        layout.setCenter(workspace);
+
+        ScrollPane supplierFormScrollPane = createSupplierFormScrollPane();
+        layout.setRight(supplierFormScrollPane);
+        BorderPane.setMargin(supplierFormScrollPane, new Insets(20, 20, 20, 0));
+
+        return layout;
+    }
+
+    private ToolBar createSupplierToolbar() {
+        Button addButton = createPrimaryButton("Add Supplier");
+        addButton.setOnAction(event -> addSupplier());
+
+        Button updateButton = createSecondaryButton("Update Supplier");
+        updateButton.setOnAction(event -> updateSelectedSupplier());
+
+        Button loadButton = createSecondaryButton("Load Into Form");
+        loadButton.setOnAction(event ->
+            loadSupplierIntoForm(supplierTable.getSelectionModel().getSelectedItem()));
+
+        Button clearButton = createSecondaryButton("Clear Form");
+        clearButton.setOnAction(event -> clearSupplierForm());
+
+        return new ToolBar(addButton, updateButton, new Separator(), loadButton, clearButton);
+    }
+
+    private TableView<Supplier> buildSupplierTable() {
+        TableView<Supplier> table = new TableView<>();
+        table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setPlaceholder(new Label("No suppliers to display."));
+        table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
+            + " -fx-border-radius: 14;");
+
+        TableColumn<Supplier, String> idColumn = new TableColumn<>("Supplier ID");
+        idColumn.setCellValueFactory(cell ->
+            new ReadOnlyStringWrapper(cell.getValue().getSupplierID()));
+
+        TableColumn<Supplier, String> nameColumn = new TableColumn<>("Name");
+        nameColumn.setCellValueFactory(cell ->
+            new ReadOnlyStringWrapper(cell.getValue().getName()));
+
+        TableColumn<Supplier, String> emailColumn = new TableColumn<>("Email");
+        emailColumn.setCellValueFactory(cell ->
+            new ReadOnlyStringWrapper(cell.getValue().getEmail()));
+
+        TableColumn<Supplier, String> contactColumn = new TableColumn<>("Contact");
+        contactColumn.setCellValueFactory(cell ->
+            new ReadOnlyStringWrapper(cell.getValue().getContactName()));
+
+        TableColumn<Supplier, String> addressColumn = new TableColumn<>("Address");
+        addressColumn.setCellValueFactory(cell ->
+            new ReadOnlyStringWrapper(cell.getValue().getAddress()));
+
+        table.getColumns().addAll(idColumn, nameColumn, emailColumn, contactColumn, addressColumn);
+        table.setItems(supplierRows);
+
+        table.getSelectionModel().selectedItemProperty().addListener(
+            (observable, oldSupplier, newSupplier) -> loadSupplierIntoForm(newSupplier));
+
+        return table;
+    }
+
+    private VBox createSupplierFormPanel() {
+        Label title = new Label("Supplier Form");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
+
+        Label description = new Label(
+            "Use this form to add a new supplier or update an existing supplier.");
+        description.setWrapText(true);
+        description.setStyle("-fx-font-size: 13px; -fx-text-fill: #4f6479;");
+
+        supplierIdFormField = createTextField("SUP-204");
+        supplierNameFormField = createTextField("Bright Apparel");
+        supplierEmailFormField = createTextField("buyer@supplier.com");
+        supplierContactFormField = createTextField("Jordan Lee");
+        supplierAddressFormField = createTextField("123 Supply Rd, Salt Lake City, UT");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(10);
+
+        grid.add(createFieldLabel("Supplier ID"), 0, 0);
+        grid.add(supplierIdFormField, 1, 0);
+        grid.add(createFieldLabel("Supplier Name"), 0, 1);
+        grid.add(supplierNameFormField, 1, 1);
+        grid.add(createFieldLabel("Supplier Email"), 0, 2);
+        grid.add(supplierEmailFormField, 1, 2);
+        grid.add(createFieldLabel("Contact Name"), 0, 3);
+        grid.add(supplierContactFormField, 1, 3);
+        grid.add(createFieldLabel("Supplier Address"), 0, 4);
+        grid.add(supplierAddressFormField, 1, 4);
+
+        ColumnConstraintsBuilder.apply(grid);
+
+        Button addButton = createPrimaryButton("Save Supplier");
+        addButton.setMaxWidth(Double.MAX_VALUE);
+        addButton.setOnAction(event -> addSupplier());
+
+        Button updateButton = createSecondaryButton("Apply Update");
+        updateButton.setMaxWidth(Double.MAX_VALUE);
+        updateButton.setOnAction(event -> updateSelectedSupplier());
+
+        Button clearButton = createSecondaryButton("Reset Form");
+        clearButton.setMaxWidth(Double.MAX_VALUE);
+        clearButton.setOnAction(event -> clearSupplierForm());
+
+        VBox actions = new VBox(10, addButton, updateButton, clearButton);
+
+        VBox panel = new VBox(14, title, description, grid, actions);
+        panel.setPrefWidth(400);
+        panel.setPadding(new Insets(20));
+        panel.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
+            + " -fx-border-radius: 14;");
+
+        return panel;
+    }
+
+    private ScrollPane createSupplierFormScrollPane() {
+        VBox formPanel = createSupplierFormPanel();
+        ScrollPane scrollPane = new ScrollPane(formPanel);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setPannable(true);
+        scrollPane.setPrefWidth(430);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background-insets: 0;");
+        scrollPane.viewportBoundsProperty().addListener(
+            (observable, oldBounds, newBounds) ->
+                formPanel.setPrefWidth(Math.max(400, newBounds.getWidth() - 2)));
+        return scrollPane;
+    }
+
+    private void refreshSuppliers() {
+        try {
+            List<Supplier> suppliers = inventoryService.viewSuppliers();
+            supplierRows.setAll(suppliers);
+            supplierOptions.setAll(suppliers);
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to load suppliers", exception);
+        }
+    }
+
+    private void showAllSuppliers(String statusMessage) {
+        try {
+            List<Supplier> suppliers = inventoryService.viewSuppliers();
+            supplierRows.setAll(suppliers);
+            supplierOptions.setAll(suppliers);
+
+            if (statusMessage != null) {
+                setStatus(statusMessage, false);
+            }
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to load suppliers", exception);
+        }
+    }
+
+    private void applySupplierSearch() {
+        try {
+            List<Supplier> results = inventoryService.searchSuppliers(searchField.getText());
+            supplierRows.setAll(results);
+            setStatus("Supplier search returned " + results.size() + " row(s).", false);
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to search suppliers", exception);
+        }
+    }
+
+    private Supplier buildSupplierFromSupplierForm() {
+        return new Supplier(
+            requireValue(supplierIdFormField, "Supplier ID"),
+            requireValue(supplierAddressFormField, "Supplier address"),
+            requireValue(supplierEmailFormField, "Supplier email"),
+            requireValue(supplierNameFormField, "Supplier name"),
+            requireValue(supplierContactFormField, "Supplier contact")
+        );
+    }
+
+    private void addSupplier() {
+        try {
+            Supplier supplier = buildSupplierFromSupplierForm();
+            inventoryService.addSupplier(supplier);
+            refreshSuppliers();
+            selectSupplierById(supplier.getSupplierID());
+            supplierComboBox.getSelectionModel().select(
+                supplierOptions.stream()
+                    .filter(s -> s.getSupplierID().equals(supplier.getSupplierID()))
+                    .findFirst()
+                    .orElse(null)
+            );
+            setStatus("Added supplier " + supplier.getSupplierID() + ".", false);
+            clearSupplierForm();
+        } catch (IllegalArgumentException exception) {
+            showError("Unable to add supplier", exception.getMessage());
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to add supplier", exception);
+        }
+    }
+
+    private void updateSelectedSupplier() {
+        Supplier selectedSupplier = supplierTable.getSelectionModel().getSelectedItem();
+        if (selectedSupplier == null) {
+            showError("No supplier selected", "Choose a supplier before updating it.");
+            return;
+        }
+
+        try {
+            Supplier updatedSupplier = buildSupplierFromSupplierForm();
+
+            if (!updatedSupplier.getSupplierID().equals(selectedSupplier.getSupplierID())) {
+                throw new IllegalArgumentException("Supplier ID cannot be changed while updating.");
+            }
+
+            inventoryService.updateSupplier(updatedSupplier);
+            refreshSuppliers();
+            selectSupplierById(updatedSupplier.getSupplierID());
+            supplierComboBox.getSelectionModel().select(
+                supplierOptions.stream()
+                    .filter(s -> s.getSupplierID().equals(updatedSupplier.getSupplierID()))
+                    .findFirst()
+                    .orElse(null)
+            );
+            setStatus("Updated supplier " + updatedSupplier.getSupplierID() + ".", false);
+        } catch (IllegalArgumentException exception) {
+            showError("Unable to update supplier", exception.getMessage());
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to update supplier", exception);
+        }
+    }
+
+    private void loadSupplierIntoForm(Supplier supplier) {
+        if (supplier == null) {
+            return;
+        }
+
+        supplierIdFormField.setText(supplier.getSupplierID());
+        supplierNameFormField.setText(supplier.getName());
+        supplierEmailFormField.setText(supplier.getEmail());
+        supplierContactFormField.setText(supplier.getContactName());
+        supplierAddressFormField.setText(supplier.getAddress());
+    }
+
+    private void clearSupplierForm() {
+        supplierIdFormField.clear();
+        supplierNameFormField.clear();
+        supplierEmailFormField.clear();
+        supplierContactFormField.clear();
+        supplierAddressFormField.clear();
+
+        if (supplierTable != null) {
+            supplierTable.getSelectionModel().clearSelection();
+        }
+    }
+
+    private void selectSupplierById(String supplierID) {
+        for (Supplier supplier : supplierRows) {
+            if (supplier.getSupplierID().equals(supplierID)) {
+                supplierTable.getSelectionModel().select(supplier);
+                return;
+            }
         }
     }
 
@@ -595,6 +875,7 @@ public class InventoryDashboardApp extends Application {
             InventoryItem inventoryItem = buildInventoryItemFromForm();
             inventoryService.addItem(inventoryItem.getProductItem(), inventoryItem);
             refreshTables(inventoryService.viewInventory());
+            refreshSuppliers();
             setStatus("Added inventory item " + inventoryItem.getInventoryID() + ".", false);
             clearForm();
         } catch (IllegalArgumentException exception) {
@@ -628,7 +909,10 @@ public class InventoryDashboardApp extends Application {
                 throw new IllegalArgumentException("Inventory ID cannot be changed while updating an item.");
             }
 
-            Supplier supplier = buildSupplierFromForm();
+            Supplier supplier = supplierComboBox.getValue();
+                if (supplier == null) {
+                    throw new IllegalArgumentException("Supplier is required.");
+                }
             double pricePerItem = parsePricePerItem();
             ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
                     requireValue(productNameField, "Product name"),
@@ -640,6 +924,7 @@ public class InventoryDashboardApp extends Application {
             inventoryService.updateInventoryItem(updatedItem);
 
             refreshTables(inventoryService.viewInventory());
+            refreshSuppliers();
             selectItemByInventoryId(inventoryID);
             setStatus("Updated inventory item " + inventoryID + ".", false);
         } catch (NumberFormatException exception) {
@@ -665,6 +950,7 @@ public class InventoryDashboardApp extends Application {
         try {
             inventoryService.removeItem(selectedItem.getInventoryID());
             refreshTables(inventoryService.viewInventory());
+            refreshSuppliers();
             clearForm();
             setStatus("Removed inventory item " + selectedItem.getInventoryID() + ".", false);
         } catch (IllegalArgumentException exception) {
@@ -719,14 +1005,27 @@ public class InventoryDashboardApp extends Application {
      * Updates the shared header search prompt to match the active tab.
      */
     private void updateSearchPrompt() {
-        searchField.setPromptText(isShipmentsTabActive() ? SHIPMENT_SEARCH_PROMPT : INVENTORY_SEARCH_PROMPT);
+        if (isShipmentsTabActive()) {
+            searchField.setPromptText(SHIPMENT_SEARCH_PROMPT);
+        } else if (isSuppliersTabActive()) {
+            searchField.setPromptText(SUPPLIER_SEARCH_PROMPT);
+        } else {
+            searchField.setPromptText(INVENTORY_SEARCH_PROMPT);
+        }
+    }
+
+    /**
+     * Checks whether the supplier tab is currently selected.
+     */
+    private boolean isSuppliersTabActive() {
+        return mainTabs != null && mainTabs.getSelectionModel().getSelectedIndex() == 1;
     }
 
     /**
      * Checks whether the shipment tab is currently selected.
      */
     private boolean isShipmentsTabActive() {
-        return mainTabs != null && mainTabs.getSelectionModel().getSelectedIndex() == 1;
+        return mainTabs != null && mainTabs.getSelectionModel().getSelectedIndex() == 2;
     }
 
     /**
@@ -761,11 +1060,12 @@ public class InventoryDashboardApp extends Application {
         productNameField.setText(product.getProductName());
         pricePerItemField.setText(String.format("%.2f", product.getPricePerItem()));
         descriptionArea.setText(product.getDescription());
-        supplierIdField.setText(supplier.getSupplierID());
-        supplierNameField.setText(supplier.getName());
-        supplierEmailField.setText(supplier.getEmail());
-        supplierContactField.setText(supplier.getContactName());
-        supplierAddressField.setText(supplier.getAddress());
+        supplierComboBox.getSelectionModel().select(
+            supplierOptions.stream()
+                .filter(s -> s.getSupplierID().equals(supplier.getSupplierID()))
+                .findFirst()
+                .orElse(supplier)
+        );
         colorField.setText(inventoryItem.getColor());
         sizeField.setText(inventoryItem.getSize());
         quantityField.setText(String.valueOf(inventoryItem.getQuantityOnHand()));
@@ -781,11 +1081,7 @@ public class InventoryDashboardApp extends Application {
         productNameField.clear();
         pricePerItemField.clear();
         descriptionArea.clear();
-        supplierIdField.clear();
-        supplierNameField.clear();
-        supplierEmailField.clear();
-        supplierContactField.clear();
-        supplierAddressField.clear();
+        supplierComboBox.getSelectionModel().clearSelection();
         colorField.clear();
         sizeField.clear();
         quantityField.clear();
@@ -807,28 +1103,30 @@ public class InventoryDashboardApp extends Application {
                 throw new IllegalArgumentException("Quantity and reorder level cannot be negative.");
             }
 
-            Supplier supplier = buildSupplierFromForm();
-            ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
-                    requireValue(productNameField, "Product name"),
-                    descriptionArea.getText().trim(), parsePricePerItem(), supplier);
+            Supplier supplier = supplierComboBox.getValue();
+            if (supplier == null) {
+                throw new IllegalArgumentException("Supplier is required.");
+            }
 
-            return new InventoryItem(requireValue(inventoryIdField, "Inventory ID"),
-                    requireValue(colorField, "Color"), requireValue(sizeField, "Size"),
-                    quantity, reorderLevel, product);
+            ProductItem product = new ProductItem(
+                requireValue(productIdField, "Product ID"),
+                requireValue(productNameField, "Product name"),
+                descriptionArea.getText().trim(),
+                parsePricePerItem(),
+                supplier
+            );
+
+            return new InventoryItem(
+                requireValue(inventoryIdField, "Inventory ID"),
+                requireValue(colorField, "Color"),
+                requireValue(sizeField, "Size"),
+                quantity,
+                reorderLevel,
+                product
+            );
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Quantity and reorder level must be whole numbers.");
         }
-    }
-
-    /**
-     * Converts supplier form fields into a Supplier object.
-     *
-     * @return supplier from the form
-     */
-    private Supplier buildSupplierFromForm() {
-        return new Supplier(requireValue(supplierIdField, "Supplier ID"), requireValue(supplierAddressField, "Supplier address"),
-                requireValue(supplierEmailField, "Supplier email"), requireValue(supplierNameField, "Supplier name"),
-                requireValue(supplierContactField, "Supplier contact"));
     }
 
     /**

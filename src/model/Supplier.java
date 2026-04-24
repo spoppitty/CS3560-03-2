@@ -102,4 +102,9 @@ public class Supplier {
     public void setContactName(String contactName) {
         this.contactName = contactName;
     }
+
+    @Override
+    public String toString() {
+        return name + " (" + supplierID + ")";
+    }
 }

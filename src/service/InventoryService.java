@@ -231,4 +231,34 @@ public class InventoryService {
             throw new IllegalArgumentException(fieldName + " is required.");
         }
     }
+
+    // suppliers
+    public List<Supplier> viewSuppliers() {
+        return inventoryRepository.findAllSuppliers();
+    }
+
+    public List<Supplier> searchSuppliers(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return inventoryRepository.findAllSuppliers();
+        }
+        return inventoryRepository.searchSuppliers(keyword);
+    }
+
+    public void addSupplier(Supplier supplier) {
+        validateSupplier(supplier);
+
+        if (inventoryRepository.existsBySupplierId(supplier.getSupplierID())) {
+            throw new IllegalArgumentException("Supplier ID already exists.");
+        }
+
+        inventoryRepository.addSupplier(supplier);
+    }
+
+    public void updateSupplier(Supplier supplier) {
+        validateSupplier(supplier);
+
+        if (!inventoryRepository.updateSupplier(supplier)) {
+            throw new IllegalArgumentException("Supplier not found.");
+        }
+    }
 }
