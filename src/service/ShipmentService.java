@@ -22,7 +22,7 @@ public class ShipmentService {
     }
 
     /**
-     * Returns shipments that still need to be received.
+     * Returns shipment history rows.
      *
      * @return open shipment rows
      */
@@ -31,7 +31,7 @@ public class ShipmentService {
     }
 
     /**
-     * Searches shipments that still need to be received.
+     * Searches shipment history rows.
      *
      * @param keyword text to match against shipment, order, item, product, supplier, or status
      * @return matching open shipment rows, or all open rows when the keyword is blank

@@ -28,6 +28,7 @@ public class InventoryRepository {
                 p.product_id,
                 p.product_name,
                 p.description,
+                p.product_price,
                 s.supplier_id,
                 s.address,
                 s.email,
@@ -274,7 +275,7 @@ public class InventoryRepository {
         Supplier supplier = new Supplier(resultSet.getString("supplier_id"), resultSet.getString("address"),
                 resultSet.getString("email"), resultSet.getString("name"), resultSet.getString("contact_name"));
         ProductItem product = new ProductItem(resultSet.getString("product_id"), resultSet.getString("product_name"),
-                resultSet.getString("description"), supplier);
+                resultSet.getString("description"), resultSet.getDouble("product_price"), supplier);
 
         return new InventoryItem(resultSet.getString("inventory_id"), resultSet.getString("color"),
                 resultSet.getString("size"), resultSet.getInt("quantity_on_hand"),
@@ -379,11 +380,12 @@ public class InventoryRepository {
      */
     private void upsertProduct(Connection connection, ProductItem product) throws SQLException {
         String sql = """
-                INSERT INTO products (product_id, product_name, description, supplier_id)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO products (product_id, product_name, description, product_price, supplier_id)
+                VALUES (?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     product_name = ?,
                     description = ?,
+                    product_price = ?,
                     supplier_id = ?
                 """;
 
@@ -391,10 +393,12 @@ public class InventoryRepository {
             statement.setString(1, product.getProductID());
             statement.setString(2, product.getProductName());
             statement.setString(3, product.getDescription());
-            statement.setString(4, product.getSupplier().getSupplierID());
-            statement.setString(5, product.getProductName());
-            statement.setString(6, product.getDescription());
-            statement.setString(7, product.getSupplier().getSupplierID());
+            statement.setDouble(4, product.getPricePerItem());
+            statement.setString(5, product.getSupplier().getSupplierID());
+            statement.setString(6, product.getProductName());
+            statement.setString(7, product.getDescription());
+            statement.setDouble(8, product.getPricePerItem());
+            statement.setString(9, product.getSupplier().getSupplierID());
             statement.executeUpdate();
         }
     }

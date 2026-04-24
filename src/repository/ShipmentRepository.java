@@ -21,24 +21,30 @@ public class ShipmentRepository {
                 si.inventory_id,
                 p.product_name,
                 s.name AS supplier_name,
+                po.order_date AS purchase_date,
                 sh.shipment_date,
                 sh.delivery_date,
                 sh.shipment_status,
-                si.shipment_quantity
+                si.shipment_quantity,
+                poi.cost_per_item,
+                poi.cost_per_item * si.shipment_quantity AS total_price
             FROM shipments sh
+            JOIN purchase_orders po ON sh.purchase_order_id = po.purchase_order_id
             JOIN suppliers s ON sh.supplier_id = s.supplier_id
             JOIN shipment_items si ON sh.shipment_id = si.shipment_id
+            LEFT JOIN purchase_order_items poi
+                ON sh.purchase_order_id = poi.purchase_order_id
+               AND si.inventory_id = poi.inventory_id
             JOIN inventory_items i ON si.inventory_id = i.inventory_id
             JOIN products p ON i.product_id = p.product_id
             """;
 
     /**
-     * Loads all shipments that have not been received yet.
+     * Loads all shipments for the shipment history.
      */
     public List<ShipmentRecord> findOpenShipments() {
         String sql = SHIPMENT_SELECT + """
-                 WHERE LOWER(sh.shipment_status) <> 'received'
-                 ORDER BY sh.shipment_date, sh.shipment_id, si.shipment_item_id
+                 ORDER BY sh.shipment_date DESC, sh.shipment_id, si.shipment_item_id
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
@@ -51,20 +57,17 @@ public class ShipmentRepository {
     }
 
     /**
-     * Searches open shipments by shipment, order, item, product, supplier, or status.
+     * Searches shipment history by shipment, order, item, product, supplier, or status.
      */
     public List<ShipmentRecord> searchOpenShipments(String keyword) {
         String sql = SHIPMENT_SELECT + """
-                 WHERE LOWER(sh.shipment_status) <> 'received'
-                   AND (
-                       LOWER(sh.shipment_id) LIKE ?
+                 WHERE LOWER(sh.shipment_id) LIKE ?
                     OR LOWER(sh.purchase_order_id) LIKE ?
                     OR LOWER(si.inventory_id) LIKE ?
                     OR LOWER(p.product_name) LIKE ?
                     OR LOWER(s.name) LIKE ?
                     OR LOWER(sh.shipment_status) LIKE ?
-                   )
-                 ORDER BY sh.shipment_date, sh.shipment_id, si.shipment_item_id
+                 ORDER BY sh.shipment_date DESC, sh.shipment_id, si.shipment_item_id
                 """;
         String pattern = "%" + keyword.trim().toLowerCase() + "%";
 
@@ -114,10 +117,13 @@ public class ShipmentRepository {
                     resultSet.getString("inventory_id"),
                     resultSet.getString("product_name"),
                     resultSet.getString("supplier_name"),
+                    toLocalDate(resultSet.getDate("purchase_date")),
                     toLocalDate(resultSet.getDate("shipment_date")),
                     toLocalDate(resultSet.getDate("delivery_date")),
                     resultSet.getString("shipment_status"),
-                    resultSet.getInt("shipment_quantity")));
+                    resultSet.getInt("shipment_quantity"),
+                    resultSet.getDouble("cost_per_item"),
+                    resultSet.getDouble("total_price")));
         }
 
         return shipments;

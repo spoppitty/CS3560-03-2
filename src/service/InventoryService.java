@@ -197,6 +197,9 @@ public class InventoryService {
 
         requireValue(product.getProductID(), "Product ID");
         requireValue(product.getProductName(), "Product name");
+        if (product.getPricePerItem() < 0) {
+            throw new IllegalArgumentException("Price per item cannot be negative.");
+        }
         validateSupplier(product.getSupplier());
     }
 

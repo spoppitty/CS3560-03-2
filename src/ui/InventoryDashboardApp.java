@@ -78,9 +78,9 @@ public class InventoryDashboardApp extends Application {
     private TextField searchField;
 
     /**
-     * Search box for open shipments.
+     * Tabs for switching between inventory and shipment workflows.
      */
-    private TextField shipmentSearchField;
+    private TabPane mainTabs;
 
     /**
      * Footer label for success and error messages.
@@ -98,6 +98,7 @@ public class InventoryDashboardApp extends Application {
     private TextField inventoryIdField;
     private TextField productIdField;
     private TextField productNameField;
+    private TextField pricePerItemField;
     private TextArea descriptionArea;
     private TextField supplierIdField;
     private TextField supplierNameField;
@@ -108,6 +109,11 @@ public class InventoryDashboardApp extends Application {
     private TextField sizeField;
     private TextField quantityField;
     private TextField reorderLevelField;
+
+    private static final String INVENTORY_SEARCH_PROMPT =
+            "Search by inventory ID, product, description, supplier, color, or size";
+    private static final String SHIPMENT_SEARCH_PROMPT =
+            "Search by shipment, order, inventory, product, supplier, or status";
 
     /**
      * JavaFX entry point that builds the window and loads inventory from MySQL.
@@ -140,17 +146,17 @@ public class InventoryDashboardApp extends Application {
         title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
 
         searchField = new TextField();
-        searchField.setPromptText("Search by inventory ID, product, description, supplier, color, or size");
+        searchField.setPromptText(INVENTORY_SEARCH_PROMPT);
         searchField.setPrefWidth(460);
-        searchField.setOnAction(event -> applySearch());
+        searchField.setOnAction(event -> applyActiveSearch());
 
         Button searchButton = createPrimaryButton("Search");
-        searchButton.setOnAction(event -> applySearch());
+        searchButton.setOnAction(event -> applyActiveSearch());
 
         Button resetButton = createSecondaryButton("Show All");
         resetButton.setOnAction(event -> {
             searchField.clear();
-            showAllInventory("Showing all inventory items.");
+            showAllActiveRows();
         });
 
         Region spacer = new Region();
@@ -215,8 +221,13 @@ public class InventoryDashboardApp extends Application {
         Tab shipmentsTab = new Tab("Shipments", shipmentsTabLayout);
         shipmentsTab.setClosable(false);
 
-        TabPane tabs = new TabPane(inventoryTab, shipmentsTab);
-        BorderPane content = new BorderPane(tabs);
+        mainTabs = new TabPane(inventoryTab, shipmentsTab);
+        mainTabs.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
+            searchField.clear();
+            updateSearchPrompt();
+            showAllActiveRows();
+        });
+        BorderPane content = new BorderPane(mainTabs);
         return content;
     }
 
@@ -226,25 +237,10 @@ public class InventoryDashboardApp extends Application {
      * @return shipments layout
      */
     private BorderPane createShipmentsContent() {
-        shipmentSearchField = new TextField();
-        shipmentSearchField.setPromptText("Search by shipment, order, inventory, product, supplier, or status");
-        shipmentSearchField.setPrefWidth(460);
-        shipmentSearchField.setOnAction(event -> applyShipmentSearch());
-
-        Button searchButton = createPrimaryButton("Search");
-        searchButton.setOnAction(event -> applyShipmentSearch());
-
-        Button resetButton = createSecondaryButton("Show Open");
-        resetButton.setOnAction(event -> {
-            shipmentSearchField.clear();
-            showOpenShipments("Showing open shipments.");
-        });
-
         Button receiveButton = createPrimaryButton("Confirm Received");
         receiveButton.setOnAction(event -> receiveSelectedShipment());
 
-        ToolBar shipmentToolbar = new ToolBar(shipmentSearchField, searchButton, resetButton,
-                new Separator(), receiveButton);
+        ToolBar shipmentToolbar = new ToolBar(receiveButton);
 
         VBox workspace = new VBox(16, shipmentToolbar, shipmentTable);
         workspace.setPadding(new Insets(20));
@@ -295,6 +291,7 @@ public class InventoryDashboardApp extends Application {
         inventoryIdField = createTextField("INV-1004");
         productIdField = createTextField("PROD-1004");
         productNameField = createTextField("Wool Coat");
+        pricePerItemField = createTextField("79.99");
         descriptionArea = new TextArea();
         descriptionArea.setPromptText("Brief product description");
         descriptionArea.setPrefRowCount(3);
@@ -319,26 +316,28 @@ public class InventoryDashboardApp extends Application {
         grid.add(productIdField, 1, 1);
         grid.add(createFieldLabel("Product Name"), 0, 2);
         grid.add(productNameField, 1, 2);
-        grid.add(createFieldLabel("Description"), 0, 3);
-        grid.add(descriptionArea, 1, 3);
-        grid.add(createFieldLabel("Supplier ID"), 0, 4);
-        grid.add(supplierIdField, 1, 4);
-        grid.add(createFieldLabel("Supplier Name"), 0, 5);
-        grid.add(supplierNameField, 1, 5);
-        grid.add(createFieldLabel("Supplier Email"), 0, 6);
-        grid.add(supplierEmailField, 1, 6);
-        grid.add(createFieldLabel("Contact Name"), 0, 7);
-        grid.add(supplierContactField, 1, 7);
-        grid.add(createFieldLabel("Supplier Address"), 0, 8);
-        grid.add(supplierAddressField, 1, 8);
-        grid.add(createFieldLabel("Color"), 0, 9);
-        grid.add(colorField, 1, 9);
-        grid.add(createFieldLabel("Size"), 0, 10);
-        grid.add(sizeField, 1, 10);
-        grid.add(createFieldLabel("Quantity"), 0, 11);
-        grid.add(quantityField, 1, 11);
-        grid.add(createFieldLabel("Reorder Level"), 0, 12);
-        grid.add(reorderLevelField, 1, 12);
+        grid.add(createFieldLabel("Price Per Item"), 0, 3);
+        grid.add(pricePerItemField, 1, 3);
+        grid.add(createFieldLabel("Description"), 0, 4);
+        grid.add(descriptionArea, 1, 4);
+        grid.add(createFieldLabel("Supplier ID"), 0, 5);
+        grid.add(supplierIdField, 1, 5);
+        grid.add(createFieldLabel("Supplier Name"), 0, 6);
+        grid.add(supplierNameField, 1, 6);
+        grid.add(createFieldLabel("Supplier Email"), 0, 7);
+        grid.add(supplierEmailField, 1, 7);
+        grid.add(createFieldLabel("Contact Name"), 0, 8);
+        grid.add(supplierContactField, 1, 8);
+        grid.add(createFieldLabel("Supplier Address"), 0, 9);
+        grid.add(supplierAddressField, 1, 9);
+        grid.add(createFieldLabel("Color"), 0, 10);
+        grid.add(colorField, 1, 10);
+        grid.add(createFieldLabel("Size"), 0, 11);
+        grid.add(sizeField, 1, 11);
+        grid.add(createFieldLabel("Quantity"), 0, 12);
+        grid.add(quantityField, 1, 12);
+        grid.add(createFieldLabel("Reorder Level"), 0, 13);
+        grid.add(reorderLevelField, 1, 13);
 
         ColumnConstraintsBuilder.apply(grid);
 
@@ -394,6 +393,7 @@ public class InventoryDashboardApp extends Application {
         table.getColumns().add(createTextColumn("Inventory ID", item -> item.getInventoryID(), 105));
         table.getColumns().add(createTextColumn("Product ID", item -> item.getProductItem().getProductID(), 95));
         table.getColumns().add(createTextColumn("Product Name", item -> item.getProductItem().getProductName(), 150));
+        table.getColumns().add(createTextColumn("Price", item -> formatCurrency(item.getProductItem().getPricePerItem()), 90));
         table.getColumns().add(createTextColumn("Supplier", item -> item.getProductItem().getSupplier().getName(), 140));
         table.getColumns().add(createTextColumn("Color", InventoryItem::getColor, 90));
         table.getColumns().add(createTextColumn("Size", InventoryItem::getSize, 80));
@@ -415,7 +415,7 @@ public class InventoryDashboardApp extends Application {
         TableView<ShipmentRecord> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setPlaceholder(new Label("No open shipments to display."));
+        table.setPlaceholder(new Label("No shipments to display."));
         table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
                 + " -fx-border-radius: 14;");
         table.getColumns().add(createShipmentTextColumn("Shipment ID", ShipmentRecord::getShipmentID, 120));
@@ -423,8 +423,11 @@ public class InventoryDashboardApp extends Application {
         table.getColumns().add(createShipmentTextColumn("Inventory ID", ShipmentRecord::getInventoryID, 120));
         table.getColumns().add(createShipmentTextColumn("Product", ShipmentRecord::getProductName, 180));
         table.getColumns().add(createShipmentTextColumn("Supplier", ShipmentRecord::getSupplierName, 170));
+        table.getColumns().add(createShipmentTextColumn("Purchased", item -> formatDate(item.getPurchaseDate()), 110));
         table.getColumns().add(createShipmentTextColumn("Shipped", item -> formatDate(item.getShipmentDate()), 110));
         table.getColumns().add(createShipmentIntegerColumn("Quantity", ShipmentRecord::getShipmentQuantity, 90));
+        table.getColumns().add(createShipmentTextColumn("Unit Price", item -> formatCurrency(item.getPricePerItem()), 100));
+        table.getColumns().add(createShipmentTextColumn("Total Price", item -> formatCurrency(item.getTotalPrice()), 110));
         table.getColumns().add(createShipmentTextColumn("Status", ShipmentRecord::getShipmentStatus, 110));
         table.setItems(shipmentRows);
         return table;
@@ -527,15 +530,37 @@ public class InventoryDashboardApp extends Application {
     }
 
     /**
+     * Runs the header search against whichever tab is active.
+     */
+    private void applyActiveSearch() {
+        if (isShipmentsTabActive()) {
+            applyShipmentSearch();
+        } else {
+            applySearch();
+        }
+    }
+
+    /**
      * Runs a keyword search and refreshes the shipment table with matching open shipments.
      */
     private void applyShipmentSearch() {
         try {
-            List<ShipmentRecord> results = shipmentService.searchOpenShipments(shipmentSearchField.getText());
+            List<ShipmentRecord> results = shipmentService.searchOpenShipments(searchField.getText());
             shipmentRows.setAll(results);
             setStatus("Shipment search returned " + results.size() + " row(s).", false);
         } catch (DatabaseException exception) {
             showDatabaseError("Unable to search shipments", exception);
+        }
+    }
+
+    /**
+     * Reloads all rows for whichever tab is active.
+     */
+    private void showAllActiveRows() {
+        if (isShipmentsTabActive()) {
+            showOpenShipments("Showing shipment history.");
+        } else {
+            showAllInventory("Showing all inventory items.");
         }
     }
 
@@ -604,9 +629,10 @@ public class InventoryDashboardApp extends Application {
             }
 
             Supplier supplier = buildSupplierFromForm();
+            double pricePerItem = parsePricePerItem();
             ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
                     requireValue(productNameField, "Product name"),
-                    descriptionArea.getText().trim(), supplier);
+                    descriptionArea.getText().trim(), pricePerItem, supplier);
             InventoryItem updatedItem = new InventoryItem(inventoryID,
                     requireValue(colorField, "Color"), requireValue(sizeField, "Size"),
                     newQuantity, reorderLevel, product);
@@ -674,7 +700,7 @@ public class InventoryDashboardApp extends Application {
     }
 
     /**
-     * Loads every open shipment from the service and optionally shows a status message.
+     * Loads shipment history from the service and optionally shows a status message.
      *
      * @param statusMessage message shown after a successful load, or null to leave footer unchanged
      */
@@ -687,6 +713,20 @@ public class InventoryDashboardApp extends Application {
         } catch (DatabaseException exception) {
             showDatabaseError("Unable to load shipments", exception);
         }
+    }
+
+    /**
+     * Updates the shared header search prompt to match the active tab.
+     */
+    private void updateSearchPrompt() {
+        searchField.setPromptText(isShipmentsTabActive() ? SHIPMENT_SEARCH_PROMPT : INVENTORY_SEARCH_PROMPT);
+    }
+
+    /**
+     * Checks whether the shipment tab is currently selected.
+     */
+    private boolean isShipmentsTabActive() {
+        return mainTabs != null && mainTabs.getSelectionModel().getSelectedIndex() == 1;
     }
 
     /**
@@ -719,6 +759,7 @@ public class InventoryDashboardApp extends Application {
         inventoryIdField.setText(inventoryItem.getInventoryID());
         productIdField.setText(product.getProductID());
         productNameField.setText(product.getProductName());
+        pricePerItemField.setText(String.format("%.2f", product.getPricePerItem()));
         descriptionArea.setText(product.getDescription());
         supplierIdField.setText(supplier.getSupplierID());
         supplierNameField.setText(supplier.getName());
@@ -738,6 +779,7 @@ public class InventoryDashboardApp extends Application {
         inventoryIdField.clear();
         productIdField.clear();
         productNameField.clear();
+        pricePerItemField.clear();
         descriptionArea.clear();
         supplierIdField.clear();
         supplierNameField.clear();
@@ -768,7 +810,7 @@ public class InventoryDashboardApp extends Application {
             Supplier supplier = buildSupplierFromForm();
             ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
                     requireValue(productNameField, "Product name"),
-                    descriptionArea.getText().trim(), supplier);
+                    descriptionArea.getText().trim(), parsePricePerItem(), supplier);
 
             return new InventoryItem(requireValue(inventoryIdField, "Inventory ID"),
                     requireValue(colorField, "Color"), requireValue(sizeField, "Size"),
@@ -894,10 +936,32 @@ public class InventoryDashboardApp extends Application {
     }
 
     /**
+     * Parses the product price field.
+     */
+    private double parsePricePerItem() {
+        try {
+            double pricePerItem = Double.parseDouble(pricePerItemField.getText().trim());
+            if (pricePerItem < 0) {
+                throw new IllegalArgumentException("Price per item cannot be negative.");
+            }
+            return pricePerItem;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Price per item must be a valid number.");
+        }
+    }
+
+    /**
      * Formats nullable dates for table display.
      */
     private String formatDate(java.time.LocalDate date) {
         return date == null ? "" : date.toString();
+    }
+
+    /**
+     * Formats money values for table display.
+     */
+    private String formatCurrency(double amount) {
+        return String.format("$%.2f", amount);
     }
 
     /**
