@@ -15,6 +15,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Separator;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
@@ -30,9 +32,11 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import model.InventoryItem;
 import model.ProductItem;
+import model.ShipmentRecord;
 import model.Supplier;
 import repository.DatabaseException;
 import service.InventoryService;
+import service.ShipmentService;
 
 /**
  * JavaFX dashboard for the inventory subsystem.
@@ -44,9 +48,19 @@ public class InventoryDashboardApp extends Application {
     private final InventoryService inventoryService = new InventoryService();
 
     /**
+     * Service used by the UI for all shipment operations.
+     */
+    private final ShipmentService shipmentService = new ShipmentService();
+
+    /**
      * JavaFX list that backs the table; changing this list refreshes the table rows.
      */
     private final ObservableList<InventoryItem> inventoryRows = FXCollections.observableArrayList();
+
+    /**
+     * JavaFX list that backs the shipment table.
+     */
+    private final ObservableList<ShipmentRecord> shipmentRows = FXCollections.observableArrayList();
 
     /**
      * Main table that displays inventory rows from MySQL.
@@ -54,9 +68,19 @@ public class InventoryDashboardApp extends Application {
     private TableView<InventoryItem> inventoryTable;
 
     /**
+     * Main table that displays open shipment rows from MySQL.
+     */
+    private TableView<ShipmentRecord> shipmentTable;
+
+    /**
      * Search box in the header.
      */
     private TextField searchField;
+
+    /**
+     * Search box for open shipments.
+     */
+    private TextField shipmentSearchField;
 
     /**
      * Footer label for success and error messages.
@@ -182,7 +206,52 @@ public class InventoryDashboardApp extends Application {
         ScrollPane formScrollPane = createFormScrollPane();
         inventoryTabLayout.setRight(formScrollPane);
         BorderPane.setMargin(formScrollPane, new Insets(20, 20, 20, 0));
-        return inventoryTabLayout;
+
+        shipmentTable = buildShipmentTable();
+        BorderPane shipmentsTabLayout = createShipmentsContent();
+
+        Tab inventoryTab = new Tab("Inventory", inventoryTabLayout);
+        inventoryTab.setClosable(false);
+        Tab shipmentsTab = new Tab("Shipments", shipmentsTabLayout);
+        shipmentsTab.setClosable(false);
+
+        TabPane tabs = new TabPane(inventoryTab, shipmentsTab);
+        BorderPane content = new BorderPane(tabs);
+        return content;
+    }
+
+    /**
+     * Builds the shipments tab with search, receive action, and open shipment table.
+     *
+     * @return shipments layout
+     */
+    private BorderPane createShipmentsContent() {
+        shipmentSearchField = new TextField();
+        shipmentSearchField.setPromptText("Search by shipment, order, inventory, product, supplier, or status");
+        shipmentSearchField.setPrefWidth(460);
+        shipmentSearchField.setOnAction(event -> applyShipmentSearch());
+
+        Button searchButton = createPrimaryButton("Search");
+        searchButton.setOnAction(event -> applyShipmentSearch());
+
+        Button resetButton = createSecondaryButton("Show Open");
+        resetButton.setOnAction(event -> {
+            shipmentSearchField.clear();
+            showOpenShipments("Showing open shipments.");
+        });
+
+        Button receiveButton = createPrimaryButton("Confirm Received");
+        receiveButton.setOnAction(event -> receiveSelectedShipment());
+
+        ToolBar shipmentToolbar = new ToolBar(shipmentSearchField, searchButton, resetButton,
+                new Separator(), receiveButton);
+
+        VBox workspace = new VBox(16, shipmentToolbar, shipmentTable);
+        workspace.setPadding(new Insets(20));
+        VBox.setVgrow(shipmentTable, Priority.ALWAYS);
+
+        BorderPane layout = new BorderPane(workspace);
+        return layout;
     }
 
     /**
@@ -338,6 +407,30 @@ public class InventoryDashboardApp extends Application {
     }
 
     /**
+     * Builds and configures the open shipment table columns.
+     *
+     * @return configured shipment table
+     */
+    private TableView<ShipmentRecord> buildShipmentTable() {
+        TableView<ShipmentRecord> table = new TableView<>();
+        table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setPlaceholder(new Label("No open shipments to display."));
+        table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
+                + " -fx-border-radius: 14;");
+        table.getColumns().add(createShipmentTextColumn("Shipment ID", ShipmentRecord::getShipmentID, 120));
+        table.getColumns().add(createShipmentTextColumn("Order ID", ShipmentRecord::getPurchaseOrderID, 120));
+        table.getColumns().add(createShipmentTextColumn("Inventory ID", ShipmentRecord::getInventoryID, 120));
+        table.getColumns().add(createShipmentTextColumn("Product", ShipmentRecord::getProductName, 180));
+        table.getColumns().add(createShipmentTextColumn("Supplier", ShipmentRecord::getSupplierName, 170));
+        table.getColumns().add(createShipmentTextColumn("Shipped", item -> formatDate(item.getShipmentDate()), 110));
+        table.getColumns().add(createShipmentIntegerColumn("Quantity", ShipmentRecord::getShipmentQuantity, 90));
+        table.getColumns().add(createShipmentTextColumn("Status", ShipmentRecord::getShipmentStatus, 110));
+        table.setItems(shipmentRows);
+        return table;
+    }
+
+    /**
      * Creates common table settings shared by the inventory table.
      *
      * @return base table instance
@@ -383,6 +476,28 @@ public class InventoryDashboardApp extends Application {
     }
 
     /**
+     * Creates a shipment table text column.
+     */
+    private TableColumn<ShipmentRecord, String> createShipmentTextColumn(String title,
+            ShipmentValueProvider<String> provider, double width) {
+        TableColumn<ShipmentRecord, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(provider.get(cellData.getValue())));
+        column.setPrefWidth(width);
+        return column;
+    }
+
+    /**
+     * Creates a shipment table integer column.
+     */
+    private TableColumn<ShipmentRecord, Number> createShipmentIntegerColumn(String title,
+            ShipmentIntValueProvider provider, double width) {
+        TableColumn<ShipmentRecord, Number> column = new TableColumn<>(title);
+        column.setCellValueFactory(cellData -> new ReadOnlyIntegerWrapper(provider.get(cellData.getValue())));
+        column.setPrefWidth(width);
+        return column;
+    }
+
+    /**
      * Builds the footer where status and error messages are shown.
      *
      * @return footer layout
@@ -408,6 +523,42 @@ public class InventoryDashboardApp extends Application {
             setStatus("Search returned " + results.size() + " item(s).", false);
         } catch (DatabaseException exception) {
             showDatabaseError("Unable to search inventory", exception);
+        }
+    }
+
+    /**
+     * Runs a keyword search and refreshes the shipment table with matching open shipments.
+     */
+    private void applyShipmentSearch() {
+        try {
+            List<ShipmentRecord> results = shipmentService.searchOpenShipments(shipmentSearchField.getText());
+            shipmentRows.setAll(results);
+            setStatus("Shipment search returned " + results.size() + " row(s).", false);
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to search shipments", exception);
+        }
+    }
+
+    /**
+     * Confirms that the selected shipment was received and updates inventory quantities.
+     */
+    private void receiveSelectedShipment() {
+        ShipmentRecord selectedShipment = shipmentTable.getSelectionModel().getSelectedItem();
+
+        if (selectedShipment == null) {
+            showError("No shipment selected", "Choose a shipment before confirming receipt.");
+            return;
+        }
+
+        try {
+            shipmentService.receiveShipment(selectedShipment.getShipmentID());
+            refreshTables(inventoryService.viewInventory());
+            showOpenShipments("Received shipment " + selectedShipment.getShipmentID()
+                    + " and updated inventory quantities.");
+        } catch (IllegalArgumentException exception) {
+            showError("Unable to receive shipment", exception.getMessage());
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to receive shipment", exception);
         }
     }
 
@@ -515,9 +666,26 @@ public class InventoryDashboardApp extends Application {
     private void showAllInventory(String statusMessage) {
         try {
             refreshTables(inventoryService.viewInventory());
+            showOpenShipments(null);
             setStatus(statusMessage, false);
         } catch (DatabaseException exception) {
             showDatabaseError("Unable to load inventory", exception);
+        }
+    }
+
+    /**
+     * Loads every open shipment from the service and optionally shows a status message.
+     *
+     * @param statusMessage message shown after a successful load, or null to leave footer unchanged
+     */
+    private void showOpenShipments(String statusMessage) {
+        try {
+            shipmentRows.setAll(shipmentService.viewOpenShipments());
+            if (statusMessage != null) {
+                setStatus(statusMessage, false);
+            }
+        } catch (DatabaseException exception) {
+            showDatabaseError("Unable to load shipments", exception);
         }
     }
 
@@ -726,6 +894,13 @@ public class InventoryDashboardApp extends Application {
     }
 
     /**
+     * Formats nullable dates for table display.
+     */
+    private String formatDate(java.time.LocalDate date) {
+        return date == null ? "" : date.toString();
+    }
+
+    /**
      * Launches the JavaFX application.
      *
      * @param args command-line arguments passed by Java
@@ -754,6 +929,16 @@ public class InventoryDashboardApp extends Application {
          * @return number displayed in the table cell
          */
         int get(InventoryItem item);
+    }
+
+    @FunctionalInterface
+    private interface ShipmentValueProvider<T> {
+        T get(ShipmentRecord item);
+    }
+
+    @FunctionalInterface
+    private interface ShipmentIntValueProvider {
+        int get(ShipmentRecord item);
     }
 
     /**
