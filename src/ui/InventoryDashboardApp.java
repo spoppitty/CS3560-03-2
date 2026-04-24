@@ -574,6 +574,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Create supplier tab.
+     */
     private BorderPane createSuppliersContent() {
         supplierTable = buildSupplierTable();
 
@@ -591,6 +594,9 @@ public class InventoryDashboardApp extends Application {
         return layout;
     }
 
+    /**
+     * Create supplier tab's buttons.
+     */
     private ToolBar createSupplierToolbar() {
         Button addButton = createPrimaryButton("Add Supplier");
         addButton.setOnAction(event -> addSupplier());
@@ -608,6 +614,9 @@ public class InventoryDashboardApp extends Application {
         return new ToolBar(addButton, updateButton, new Separator(), loadButton, clearButton);
     }
 
+    /**
+     * Create supplier list.
+     */
     private TableView<Supplier> buildSupplierTable() {
         TableView<Supplier> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -645,6 +654,9 @@ public class InventoryDashboardApp extends Application {
         return table;
     }
 
+    /**
+     * Create add supplier form.
+     */
     private VBox createSupplierFormPanel() {
         Label title = new Label("Supplier Form");
         title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
@@ -715,6 +727,9 @@ public class InventoryDashboardApp extends Application {
         return scrollPane;
     }
 
+    /**
+     * Refresh populating updated and new supplier info globally.
+     */
     private void refreshSuppliers() {
         try {
             List<Supplier> suppliers = inventoryService.viewSuppliers();
@@ -725,6 +740,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Show all suppliers.
+     */
     private void showAllSuppliers(String statusMessage) {
         try {
             List<Supplier> suppliers = inventoryService.viewSuppliers();
@@ -739,6 +757,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Supplier search.
+     */
     private void applySupplierSearch() {
         try {
             List<Supplier> results = inventoryService.searchSuppliers(searchField.getText());
@@ -749,6 +770,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Create supplier from form data.
+     */
     private Supplier buildSupplierFromSupplierForm() {
         return new Supplier(
             requireValue(supplierIdFormField, "Supplier ID"),
@@ -759,6 +783,9 @@ public class InventoryDashboardApp extends Application {
         );
     }
 
+    /**
+     * Add new supplier.
+     */
     private void addSupplier() {
         try {
             Supplier supplier = buildSupplierFromSupplierForm();
@@ -780,6 +807,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Update existing supplier.
+     */
     private void updateSelectedSupplier() {
         Supplier selectedSupplier = supplierTable.getSelectionModel().getSelectedItem();
         if (selectedSupplier == null) {
@@ -811,6 +841,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Populate existing supplier into form.
+     */
     private void loadSupplierIntoForm(Supplier supplier) {
         if (supplier == null) {
             return;
@@ -823,6 +856,9 @@ public class InventoryDashboardApp extends Application {
         supplierAddressFormField.setText(supplier.getAddress());
     }
 
+    /**
+     * Clear supplier form.
+     */
     private void clearSupplierForm() {
         supplierIdFormField.clear();
         supplierNameFormField.clear();
@@ -835,6 +871,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Select supplier.
+     */
     private void selectSupplierById(String supplierID) {
         for (Supplier supplier : supplierRows) {
             if (supplier.getSupplierID().equals(supplierID)) {

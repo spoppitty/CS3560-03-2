@@ -103,6 +103,9 @@ public class Supplier {
         this.contactName = contactName;
     }
 
+     /**
+     * Returns supplier name and supplierID.
+     */
     @Override
     public String toString() {
         return name + " (" + supplierID + ")";
