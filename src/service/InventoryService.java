@@ -204,6 +204,9 @@ public class InventoryService {
 
         requireValue(product.getProductID(), "Product ID");
         requireValue(product.getProductName(), "Product name");
+        if (product.getPricePerItem() < 0) {
+            throw new IllegalArgumentException("Price per item cannot be negative.");
+        }
         validateSupplier(product.getSupplier());
     }
 
@@ -233,6 +236,36 @@ public class InventoryService {
     private void requireValue(String value, String fieldName) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(fieldName + " is required.");
+        }
+    }
+
+    // suppliers
+    public List<Supplier> viewSuppliers() {
+        return inventoryRepository.findAllSuppliers();
+    }
+
+    public List<Supplier> searchSuppliers(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return inventoryRepository.findAllSuppliers();
+        }
+        return inventoryRepository.searchSuppliers(keyword);
+    }
+
+    public void addSupplier(Supplier supplier) {
+        validateSupplier(supplier);
+
+        if (inventoryRepository.existsBySupplierId(supplier.getSupplierID())) {
+            throw new IllegalArgumentException("Supplier ID already exists.");
+        }
+
+        inventoryRepository.addSupplier(supplier);
+    }
+
+    public void updateSupplier(Supplier supplier) {
+        validateSupplier(supplier);
+
+        if (!inventoryRepository.updateSupplier(supplier)) {
+            throw new IllegalArgumentException("Supplier not found.");
         }
     }
 }

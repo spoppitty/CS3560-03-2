@@ -20,6 +20,11 @@ public class ProductItem {
     private String description;
 
     /**
+     * Price for one unit of the product.
+     */
+    private double pricePerItem;
+
+    /**
      * Supplier that provides this product.
      */
     private Supplier supplier;
@@ -28,9 +33,18 @@ public class ProductItem {
      * Creates a product with supplier information.
      */
     public ProductItem(String productID, String productName, String description, Supplier supplier) {
+        this(productID, productName, description, 0.0, supplier);
+    }
+
+    /**
+     * Creates a product with supplier information and a unit price.
+     */
+    public ProductItem(String productID, String productName, String description, double pricePerItem,
+            Supplier supplier) {
         this.productID = productID;
         this.productName = productName;
         this.description = description;
+        this.pricePerItem = pricePerItem;
         this.supplier = supplier;
     }
 
@@ -56,6 +70,13 @@ public class ProductItem {
     }
 
     /**
+     * Returns the price for one unit of this product.
+     */
+    public double getPricePerItem() {
+        return pricePerItem;
+    }
+
+    /**
      * Returns the product supplier.
      */
     public Supplier getSupplier() {
@@ -74,6 +95,13 @@ public class ProductItem {
      */
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    /**
+     * Updates the price for one unit of this product.
+     */
+    public void setPricePerItem(double pricePerItem) {
+        this.pricePerItem = pricePerItem;
     }
 
     /**
