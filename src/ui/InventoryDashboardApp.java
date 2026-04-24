@@ -31,6 +31,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.ButtonType;
 import javafx.stage.Stage;
 import model.InventoryItem;
 import model.ProductItem;
@@ -283,7 +285,10 @@ public class InventoryDashboardApp extends Application {
         Button clearButton = createSecondaryButton("Clear Form");
         clearButton.setOnAction(event -> clearForm());
 
-        return new ToolBar(addButton, updateButton, removeButton, new Separator(), loadSelectedButton, clearButton);
+        Button reorderButton = createSecondaryButton("Reorder");
+        reorderButton.setOnAction(event -> reorderSelectedItem());
+
+        return new ToolBar(addButton, updateButton,reorderButton, removeButton, new Separator(), loadSelectedButton, clearButton);
     }
 
     /**
@@ -1127,6 +1132,72 @@ public class InventoryDashboardApp extends Application {
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Quantity and reorder level must be whole numbers.");
         }
+    }
+    private void reorderSelectedItem() {
+        InventoryItem selectedItem = inventoryTable.getSelectionModel().getSelectedItem();
+
+        if (selectedItem == null) {
+            showError("No item selected", "Select an item to reorder.");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Reorder Item");
+        dialog.setHeaderText("Enter quantity to reorder:");
+        dialog.setContentText("Quantity:");
+
+        dialog.showAndWait().ifPresent(input -> {
+            try {
+                int quantity = Integer.parseInt(input);
+
+                if (quantity <= 0) {
+                    throw new IllegalArgumentException("Quantity must be greater than 0.");
+                }
+
+                ProductItem product = selectedItem.getProductItem();
+                Supplier supplier = product.getSupplier();
+                double totalPrice = product.getPricePerItem() * quantity;
+
+                Alert receipt = new Alert(Alert.AlertType.CONFIRMATION);
+                receipt.setTitle("Confirm Reorder");
+                receipt.setHeaderText("Confirm purchase order");
+                receipt.setContentText(
+                        "Inventory ID: " + selectedItem.getInventoryID()
+                                + "\nProduct ID: " + product.getProductID()
+                                + "\nProduct Name: " + product.getProductName()
+                                + "\nSize: " + selectedItem.getSize()
+                                + "\nColor: " + selectedItem.getColor()
+                                + "\nQuantity Purchasing: " + quantity
+                                + "\nSupplier: " + supplier.getName()
+                                + "\nTotal Price: " + formatCurrency(totalPrice)
+                                + "\n\nDo you want to confirm this order?"
+                );
+
+                receipt.showAndWait().ifPresent(response -> {
+                    if (response == ButtonType.OK) {
+                        String shipmentId = shipmentService.createShipment(
+                                selectedItem.getInventoryID(),
+                                quantity
+                        );
+
+                        setStatus("Order placed. Shipment ID: " + shipmentId, false);
+
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("Order Placed");
+                        alert.setHeaderText("Your order has been placed.");
+                        alert.setContentText("Shipment ID: " + shipmentId);
+                        alert.showAndWait();
+
+                        showOpenShipments("New shipment created.");
+                    }
+                });
+
+            } catch (NumberFormatException e) {
+                showError("Invalid input", "Please enter a valid number.");
+            } catch (Exception e) {
+                showError("Error", e.getMessage());
+            }
+        });
     }
 
     /**

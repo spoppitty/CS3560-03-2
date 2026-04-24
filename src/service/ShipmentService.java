@@ -114,4 +114,16 @@ public class ShipmentService {
             throw new IllegalArgumentException("Inventory item is required.");
         }
     }
+
+    public String createShipment(String inventoryId, int quantity) {
+        if (inventoryId == null || inventoryId.isBlank()) {
+            throw new IllegalArgumentException("Inventory ID required.");
+        }
+
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than 0.");
+        }
+
+        return shipmentRepository.createShipment(inventoryId, quantity);
+    }
 }

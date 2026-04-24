@@ -48,8 +48,8 @@ public class ShipmentRepository {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql);
-                ResultSet resultSet = statement.executeQuery()) {
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
             return mapShipmentRecords(resultSet);
         } catch (SQLException exception) {
             throw new DatabaseException("Unable to load shipments from the database.", exception);
@@ -72,7 +72,7 @@ public class ShipmentRepository {
         String pattern = "%" + keyword.trim().toLowerCase() + "%";
 
         try (Connection connection = DatabaseConnection.getConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
             for (int index = 1; index <= 6; index++) {
                 statement.setString(index, pattern);
             }
@@ -208,5 +208,83 @@ public class ShipmentRepository {
     @FunctionalInterface
     private interface DatabaseOperation {
         void run() throws SQLException;
+    }
+
+
+    public String createShipment(String inventoryId, int quantity) {
+        String shipmentId = "SHIP-" + System.currentTimeMillis();
+        String purchaseOrderId = "PO-" + System.currentTimeMillis();
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+
+            runInTransaction(connection, () -> {
+
+
+                String insertPO = """
+                            INSERT INTO purchase_orders (purchase_order_id, order_date, order_status)
+                            VALUES (?, CURRENT_DATE, 'Pending')
+                        """;
+
+                try (PreparedStatement stmt = connection.prepareStatement(insertPO)) {
+                    stmt.setString(1, purchaseOrderId);
+                    stmt.executeUpdate();
+                }
+
+
+                String insertShipment = """
+                            INSERT INTO shipments (shipment_id, purchase_order_id, supplier_id, shipment_date, shipment_status)
+                            SELECT ?, ?, s.supplier_id, CURRENT_DATE, 'Pending'
+                            FROM inventory_items i
+                            JOIN products p ON i.product_id = p.product_id
+                            JOIN suppliers s ON p.supplier_id = s.supplier_id
+                            WHERE i.inventory_id = ?
+                        """;
+
+                try (PreparedStatement stmt = connection.prepareStatement(insertShipment)) {
+                    stmt.setString(1, shipmentId);
+                    stmt.setString(2, purchaseOrderId);
+                    stmt.setString(3, inventoryId);
+                    stmt.executeUpdate();
+                }
+
+
+                String insertItem = """
+                            INSERT INTO shipment_items (shipment_item_id, shipment_id, inventory_id, shipment_quantity)
+                            VALUES (?, ?, ?, ?)
+                        """;
+
+                try (PreparedStatement stmt = connection.prepareStatement(insertItem)) {
+                    stmt.setString(1, "ITEM-" + System.currentTimeMillis());
+                    stmt.setString(2, shipmentId);
+                    stmt.setString(3, inventoryId);
+                    stmt.setInt(4, quantity);
+                    stmt.executeUpdate();
+                }
+
+                String insertPOItem = """
+                            INSERT INTO purchase_order_items 
+                                (order_item_id, purchase_order_id, inventory_id, cost_per_item, order_quantity)
+                            SELECT ?, ?, i.inventory_id, p.product_price, ?
+                            FROM inventory_items i
+                            JOIN products p ON i.product_id = p.product_id
+                            WHERE i.inventory_id = ?
+                        """;
+
+                try (PreparedStatement stmt = connection.prepareStatement(insertPOItem)) {
+                    stmt.setString(1, "POITEM-" + System.currentTimeMillis());
+                    stmt.setString(2, purchaseOrderId);
+                    stmt.setInt(3, quantity);
+                    stmt.setString(4, inventoryId);
+                    stmt.executeUpdate();
+                }
+
+            });
+
+            return shipmentId;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new DatabaseException("Failed to create shipment.", e);
+        }
     }
 }
