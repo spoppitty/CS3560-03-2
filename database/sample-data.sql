@@ -11,11 +11,11 @@ ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     contact_name = VALUES(contact_name);
 
-INSERT INTO products (product_id, product_name, description, supplier_id)
+INSERT INTO products (product_id, product_name, description, product_price, supplier_id)
 VALUES
-    ('PROD-1001', 'Winter Parka', 'Insulated coat for seasonal display', 'SUP-201'),
-    ('PROD-1002', 'Leather Boots', 'Water-resistant ankle boots', 'SUP-202'),
-    ('PROD-1003', 'Silk Scarf', 'Luxury scarf for gift section', 'SUP-203')
+    ('PROD-1001', 'Winter Parka', 'Insulated coat for seasonal display', 59.99, 'SUP-201'),
+    ('PROD-1002', 'Leather Boots', 'Water-resistant ankle boots', 49.99, 'SUP-202'),
+    ('PROD-1003', 'Silk Scarf', 'Luxury scarf for gift section', 99.99, 'SUP-203')
 ON DUPLICATE KEY UPDATE
     product_name = VALUES(product_name),
     description = VALUES(description),
