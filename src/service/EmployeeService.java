@@ -1,43 +1,67 @@
 package service;
 
 import model.Employee;
+import repository.EmployeeRepository;
 
 /**
  * Handles employee-related use cases.
  */
 public class EmployeeService {
 
-    /**
-     * Creates a new active employee account.
-     *
-     * @param employeeID employee-specific identifier
-     * @param accountName display name for the account
-     * @param username login username
-     * @param password login password
-     * @param email employee email address
-     * @return new employee object
-     */
-    public Employee createEmployeeAccount(String employeeID, String accountName,
-                                          String username, String password, String email) {
-        return new Employee(accountName, username, password, email, true, employeeID);
+    private final EmployeeRepository employeeRepository = new EmployeeRepository();
+
+    public Employee createEmployeeAccount(String employeeID, String firstName,
+                                          String lastName, String username,
+                                          String password, String role) {
+        return new Employee(employeeID, firstName, lastName, username, password, role);
     }
 
-    /**
-     * Updates the employee's email address.
-     *
-     * @param employee employee to update
-     * @param newEmail replacement email address
-     */
-    public void updateEmployeeInformation(Employee employee, String newEmail) {
-        employee.setEmail(newEmail);
+    public Employee registerEmployee(String employeeID, String firstName, String lastName,
+                                     String username, String password, String confirmPassword,
+                                     String role) {
+        if (firstName.isBlank() || lastName.isBlank()) {
+            throw new IllegalArgumentException("Name fields cannot be empty.");
+        }
+
+        if (username.isBlank()) {
+            throw new IllegalArgumentException("Username cannot be empty.");
+        }
+
+        if (password.isBlank()) {
+            throw new IllegalArgumentException("Password cannot be empty.");
+        }
+
+        if (!password.equals(confirmPassword)) {
+            throw new IllegalArgumentException("Passwords do not match.");
+        }
+
+        if (employeeID == null || employeeID.isBlank()) {
+            throw new IllegalArgumentException("Employee ID cannot be empty.");
+        }
+
+        if (employeeID.length() > 10) {
+            throw new IllegalArgumentException("Employee ID must be 10 characters or fewer.");
+        }
+
+        if (employeeRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username already exists.");
+        }
+
+        Employee employee = createEmployeeAccount(
+                employeeID,
+                firstName,
+                lastName,
+                username,
+                password,
+                role
+        );
+
+        employeeRepository.createEmployee(employee);
+        return employee;
     }
 
-    /**
-     * Deactivates an employee account.
-     *
-     * @param employee employee account to deactivate
-     */
-    public void deactivateEmployeeAccount(Employee employee) {
-        employee.setActive(false);
+    public String generateEmployeeId() {
+        int suffix = (int) (System.currentTimeMillis() % 1_000_000);
+        return String.format("EMP-%04d", suffix % 10_000);
     }
 }

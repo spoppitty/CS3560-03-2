@@ -39,13 +39,13 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 
 CREATE TABLE IF NOT EXISTS employees (
     employee_id VARCHAR(50) PRIMARY KEY,
-    employee_name VARCHAR(100) NOT NULL,
-    employee_email VARCHAR(100) NOT NULL UNIQUE,
-    employee_phone VARCHAR(30),
-    role VARCHAR(50) NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    account_status VARCHAR(30) NOT NULL
+    role VARCHAR(10) NOT NULL,
+    account_status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+    CONSTRAINT chk_role CHECK (role IN ('EMP', 'MGR'))
 );
 
 CREATE TABLE IF NOT EXISTS purchase_orders (

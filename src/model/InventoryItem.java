@@ -34,6 +34,7 @@ public class InventoryItem {
      */
     private ProductItem productItem;
 
+
     /**
      * Creates an inventory row for one product variation.
      */
@@ -144,4 +145,5 @@ public class InventoryItem {
     public boolean isLowStock() {
         return quantityOnHand <= reorderLevel;
     }
+
 }
