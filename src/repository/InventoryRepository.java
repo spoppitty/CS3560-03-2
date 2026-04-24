@@ -10,6 +10,7 @@ import java.util.List;
 import model.InventoryItem;
 import model.ProductItem;
 import model.Supplier;
+import model.Employee;
 
 /**
  * Persists inventory data in MySQL.
@@ -435,7 +436,11 @@ public class InventoryRepository {
         void run() throws SQLException;
     }
 
-    // suppliers
+    /**
+     * Displays suppliers.
+     *
+     * @return Supplier info
+     */
     public List<Supplier> findAllSuppliers() {
         String sql = """
             SELECT supplier_id, address, email, name, contact_name
@@ -465,6 +470,12 @@ public class InventoryRepository {
         }
     }
 
+    /**
+     * Searches the list of suppliers given a keyword.
+     *
+     * @param keyword Search keyword
+     * @return Suppliers that match the keyword
+     */
     public List<Supplier> searchSuppliers(String keyword) {
         String sql = """
             SELECT supplier_id, address, email, name, contact_name
@@ -505,6 +516,12 @@ public class InventoryRepository {
         }
     }
 
+    /**
+     * Searches the list of suppliers given a supplierID.
+     *
+     * @param supplierID Search supplierID
+     * @return Suppliers that match the supplierID
+     */
     public Supplier findSupplierById(String supplierID) {
         String sql = """
             SELECT supplier_id, address, email, name, contact_name
@@ -534,6 +551,12 @@ public class InventoryRepository {
         }
     }
 
+    /**
+     * Searches the list of suppliers.
+     *
+     * @param supplierID
+     * @return Supplier
+     */
     public boolean existsBySupplierId(String supplierID) {
         String sql = "SELECT 1 FROM suppliers WHERE supplier_id = ?";
 
@@ -550,6 +573,11 @@ public class InventoryRepository {
         }
     }
 
+    /**
+     * Add new suppliers.
+     *
+     * @param supplier Supplier info
+     */
     public void addSupplier(Supplier supplier) {
         String sql = """
             INSERT INTO suppliers (supplier_id, address, email, name, contact_name)
@@ -569,7 +597,13 @@ public class InventoryRepository {
             throw new DatabaseException("Unable to add supplier to the database.", exception);
         }
     }
-
+    
+    /**
+     * Update existing supplier information
+     *
+     * @param supplier Supplier
+     * @return Popular new supplier info in list.
+     */
     public boolean updateSupplier(Supplier supplier) {
         String sql = """
             UPDATE suppliers

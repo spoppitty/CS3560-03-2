@@ -165,6 +165,13 @@ public class InventoryService {
         return inventoryRepository.countInventoryItems();
     }
 
+    public List<InventoryItem> getLowStockItems() {
+        return inventoryRepository.findAll()
+                .stream()
+                .filter(InventoryItem::isLowStock)
+                .toList();
+    }
+
     /**
      * Validates required inventory fields before saving to the database.
      *
@@ -232,11 +239,21 @@ public class InventoryService {
         }
     }
 
-    // suppliers
+    /**
+     * Return all suppliers in a list.
+     *
+     * @return All suppliers in database.
+     */
     public List<Supplier> viewSuppliers() {
         return inventoryRepository.findAllSuppliers();
     }
 
+    /**
+     * Return supplers that match the keyword.
+     *
+     * @param keyword Search keyword
+     * @return Suppliers that match the keyword
+     */
     public List<Supplier> searchSuppliers(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return inventoryRepository.findAllSuppliers();
@@ -244,6 +261,11 @@ public class InventoryService {
         return inventoryRepository.searchSuppliers(keyword);
     }
 
+    /**
+     * Add new suppliers.
+     *
+     * @param supplier Supplier info
+     */
     public void addSupplier(Supplier supplier) {
         validateSupplier(supplier);
 
@@ -254,6 +276,12 @@ public class InventoryService {
         inventoryRepository.addSupplier(supplier);
     }
 
+    /**
+     * Update existing supplier information
+     *
+     * @param supplier Supplier
+     * @return Popular new supplier info in list.
+     */
     public void updateSupplier(Supplier supplier) {
         validateSupplier(supplier);
 

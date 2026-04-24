@@ -33,6 +33,18 @@ ON DUPLICATE KEY UPDATE
     quantity_on_hand = VALUES(quantity_on_hand),
     reorder_level = VALUES(reorder_level);
 
+INSERT INTO employees (employee_id, first_name, last_name, username, password, role)
+VALUES
+    ('MGR-1001', 'Admin', 'User', 'admin', '1234', 'MGR'),
+    ('EMP-1004', 'John', 'Doe', 'jdoe', '1234', 'EMP'),
+    ('EMP-1005', 'Jane', 'Smith', 'jsmith', '1234', 'EMP'),
+    ('EMP-1006', 'Alex', 'Brown', 'abrown', '1234', 'EMP')
+ON DUPLICATE KEY UPDATE
+    first_name = VALUES(first_name),
+    last_name = VALUES(last_name),
+    password = VALUES(password),
+    role = VALUES(role);
+
 INSERT INTO purchase_orders (purchase_order_id, employee_id, order_amount, order_status, order_date)
 VALUES
     ('PO-3001', NULL, 249.95, 'Shipped', CURRENT_DATE)

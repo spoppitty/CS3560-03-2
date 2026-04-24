@@ -1,5 +1,7 @@
 package ui;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import javafx.application.Application;
@@ -33,19 +35,25 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ButtonType;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import model.Employee;
 import model.InventoryItem;
 import model.ProductItem;
 import model.ShipmentRecord;
 import model.Supplier;
+import report.generateLowStockPDF;
 import repository.DatabaseException;
 import service.InventoryService;
+import service.SessionManager;
 import service.ShipmentService;
 
 /**
  * JavaFX dashboard for the inventory subsystem.
  */
-public class InventoryDashboardApp extends Application {
+import javafx.application.Application;
+
+public class InventoryDashboardApp {
     /**
      * Service used by the UI for all inventory operations.
      */
@@ -131,21 +139,22 @@ public class InventoryDashboardApp extends Application {
      *
      * @param stage primary application window
      */
-    @Override
-    public void start(Stage stage) {
+    // @Override
+    public Scene createScene(Stage stage, InventorySubsystemApp app) {
         BorderPane root = new BorderPane();
-        root.setTop(createHeader());
+        root.setTop(createHeader(app));
         root.setCenter(createContent());
         root.setBottom(createFooter());
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #f7f8fc, #eef2f7);");
 
         Scene scene = new Scene(root, 1400, 860);
-        stage.setTitle("Department Store Inventory Dashboard");
-        stage.setScene(scene);
-        stage.show();
+        // stage.setTitle("Department Store Inventory Dashboard");
+        // stage.setScene(scene);
+        // stage.show();
 
-        refreshSuppliers();        
+        refreshSuppliers();
         showAllInventory("Loaded inventory from database.");
+        return scene;
     }
 
     /**
@@ -153,7 +162,7 @@ public class InventoryDashboardApp extends Application {
      *
      * @return header layout
      */
-    private VBox createHeader() {
+    private VBox createHeader(InventorySubsystemApp app) {
         Label title = new Label("Department Store Inventory Dashboard");
         title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
 
@@ -171,10 +180,30 @@ public class InventoryDashboardApp extends Application {
             showAllActiveRows();
         });
 
+        Employee currentUser = SessionManager.getCurrentUser();
+
+        Label userLabel = new Label(
+            currentUser != null
+                ? "Logged in: " + currentUser.getFirstName()
+                : "Not logged in"
+         );
+
+        userLabel.setStyle("-fx-text-fill: #17324d; -fx-font-weight: bold;");
+
+        Button logoutButton = createSecondaryButton("Logout");
+        logoutButton.setOnAction(e -> {
+            SessionManager.logout();
+            app.showLogin();
+        });
+        logoutButton.setDisable(currentUser == null);
+
+        VBox sessionBox = new VBox(6, userLabel, logoutButton);
+        sessionBox.setAlignment(Pos.CENTER_RIGHT);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox toolbar = new HBox(10, searchField, searchButton, resetButton, spacer, createSummaryCard("Items"));
+        HBox toolbar = new HBox(10, searchField, searchButton, resetButton, spacer, createSummaryCard("Items"), sessionBox);
         toolbar.setAlignment(Pos.CENTER_LEFT);
 
         VBox header = new VBox(10, title, toolbar);
@@ -276,6 +305,9 @@ public class InventoryDashboardApp extends Application {
         Button updateButton = createSecondaryButton("Update Quantity");
         updateButton.setOnAction(event -> updateSelectedQuantity());
 
+        Button pdfButton = createPrimaryButton("Export Low Stock PDF");
+        pdfButton.setOnAction(e -> generateLowStockPdf());
+
         Button removeButton = createSecondaryButton("Remove Selected");
         removeButton.setOnAction(event -> removeSelectedItem());
 
@@ -288,7 +320,7 @@ public class InventoryDashboardApp extends Application {
         Button reorderButton = createSecondaryButton("Reorder");
         reorderButton.setOnAction(event -> reorderSelectedItem());
 
-        return new ToolBar(addButton, updateButton,reorderButton, removeButton, new Separator(), loadSelectedButton, clearButton);
+        return new ToolBar(addButton, updateButton, pdfButton, reorderButton, removeButton, new Separator(), loadSelectedButton, clearButton);
     }
 
     /**
@@ -452,7 +484,7 @@ public class InventoryDashboardApp extends Application {
     private TableView<InventoryItem> createBaseTable() {
         TableView<InventoryItem> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);   //CONSTRAINED_RESIZE_POLICY Had to Change
         table.setPlaceholder(new Label("No inventory items to display."));
         table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
                 + " -fx-border-radius: 14;");
@@ -579,6 +611,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Create supplier tab.
+     */
     private BorderPane createSuppliersContent() {
         supplierTable = buildSupplierTable();
 
@@ -596,6 +631,9 @@ public class InventoryDashboardApp extends Application {
         return layout;
     }
 
+    /**
+     * Create supplier tab's buttons.
+     */
     private ToolBar createSupplierToolbar() {
         Button addButton = createPrimaryButton("Add Supplier");
         addButton.setOnAction(event -> addSupplier());
@@ -613,6 +651,9 @@ public class InventoryDashboardApp extends Application {
         return new ToolBar(addButton, updateButton, new Separator(), loadButton, clearButton);
     }
 
+    /**
+     * Create supplier list.
+     */
     private TableView<Supplier> buildSupplierTable() {
         TableView<Supplier> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -650,6 +691,9 @@ public class InventoryDashboardApp extends Application {
         return table;
     }
 
+    /**
+     * Create add supplier form.
+     */
     private VBox createSupplierFormPanel() {
         Label title = new Label("Supplier Form");
         title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
@@ -720,6 +764,9 @@ public class InventoryDashboardApp extends Application {
         return scrollPane;
     }
 
+    /**
+     * Refresh populating updated and new supplier info globally.
+     */
     private void refreshSuppliers() {
         try {
             List<Supplier> suppliers = inventoryService.viewSuppliers();
@@ -730,6 +777,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Show all suppliers.
+     */
     private void showAllSuppliers(String statusMessage) {
         try {
             List<Supplier> suppliers = inventoryService.viewSuppliers();
@@ -744,6 +794,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Supplier search.
+     */
     private void applySupplierSearch() {
         try {
             List<Supplier> results = inventoryService.searchSuppliers(searchField.getText());
@@ -754,6 +807,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Create supplier from form data.
+     */
     private Supplier buildSupplierFromSupplierForm() {
         return new Supplier(
             requireValue(supplierIdFormField, "Supplier ID"),
@@ -764,6 +820,9 @@ public class InventoryDashboardApp extends Application {
         );
     }
 
+    /**
+     * Add new supplier.
+     */
     private void addSupplier() {
         try {
             Supplier supplier = buildSupplierFromSupplierForm();
@@ -785,6 +844,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Update existing supplier.
+     */
     private void updateSelectedSupplier() {
         Supplier selectedSupplier = supplierTable.getSelectionModel().getSelectedItem();
         if (selectedSupplier == null) {
@@ -816,6 +878,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Populate existing supplier into form.
+     */
     private void loadSupplierIntoForm(Supplier supplier) {
         if (supplier == null) {
             return;
@@ -828,6 +893,9 @@ public class InventoryDashboardApp extends Application {
         supplierAddressFormField.setText(supplier.getAddress());
     }
 
+    /**
+     * Clear supplier form.
+     */
     private void clearSupplierForm() {
         supplierIdFormField.clear();
         supplierNameFormField.clear();
@@ -840,6 +908,9 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+    /**
+     * Select supplier.
+     */
     private void selectSupplierById(String supplierID) {
         for (Supplier supplier : supplierRows) {
             if (supplier.getSupplierID().equals(supplierID)) {
@@ -941,6 +1012,7 @@ public class InventoryDashboardApp extends Application {
         }
     }
 
+
     /**
      * Removes the currently selected inventory item.
      */
@@ -986,6 +1058,7 @@ public class InventoryDashboardApp extends Application {
             showOpenShipments(null);
             setStatus(statusMessage, false);
         } catch (DatabaseException exception) {
+            exception.printStackTrace();
             showDatabaseError("Unable to load inventory", exception);
         }
     }
@@ -1108,27 +1181,14 @@ public class InventoryDashboardApp extends Application {
                 throw new IllegalArgumentException("Quantity and reorder level cannot be negative.");
             }
 
-            Supplier supplier = supplierComboBox.getValue();
-            if (supplier == null) {
-                throw new IllegalArgumentException("Supplier is required.");
-            }
+            Supplier supplier = buildSupplierFromForm();
+            ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
+                    requireValue(productNameField, "Product name"),
+                    descriptionArea.getText().trim(), supplier);
 
-            ProductItem product = new ProductItem(
-                requireValue(productIdField, "Product ID"),
-                requireValue(productNameField, "Product name"),
-                descriptionArea.getText().trim(),
-                parsePricePerItem(),
-                supplier
-            );
-
-            return new InventoryItem(
-                requireValue(inventoryIdField, "Inventory ID"),
-                requireValue(colorField, "Color"),
-                requireValue(sizeField, "Size"),
-                quantity,
-                reorderLevel,
-                product
-            );
+            return new InventoryItem(requireValue(inventoryIdField, "Inventory ID"),
+                    requireValue(colorField, "Color"), requireValue(sizeField, "Size"),
+                    quantity, reorderLevel, product);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Quantity and reorder level must be whole numbers.");
         }
@@ -1198,6 +1258,27 @@ public class InventoryDashboardApp extends Application {
                 showError("Error", e.getMessage());
             }
         });
+    }
+
+    /**
+     * Resolves the supplier for the current inventory form.
+     * Prefers the selected supplier from the combo box and falls back to
+     * the supplier detail fields when needed.
+     *
+     * @return supplier to attach to the product
+     */
+    private Supplier buildSupplierFromForm() {
+        Supplier selectedSupplier = supplierComboBox == null ? null : supplierComboBox.getValue();
+        if (selectedSupplier != null) {
+            return selectedSupplier;
+        }
+
+        return new Supplier(
+                requireValue(supplierIdFormField, "Supplier ID"),
+                requireValue(supplierAddressFormField, "Supplier address"),
+                requireValue(supplierEmailFormField, "Supplier email"),
+                requireValue(supplierNameFormField, "Supplier name"),
+                requireValue(supplierContactFormField, "Supplier contact"));
     }
 
     /**
@@ -1293,6 +1374,27 @@ public class InventoryDashboardApp extends Application {
         alert.showAndWait();
     }
 
+    private void generateLowStockPdf() {
+    try {
+        List<InventoryItem> lowStock = inventoryService.getLowStockItems();
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Low Stock Report");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+
+                File file = fileChooser.showSaveDialog(inventoryTable.getScene().getWindow());
+
+        if (file != null) {
+            generateLowStockPDF.generateLowStockReport(lowStock, file.getAbsolutePath());
+            setStatus("Low stock PDF generated.", false);
+        }
+
+    } catch (IOException e) {
+        showError("PDF Error", "Failed to generate PDF report.");
+    }
+}
+
     /**
      * Shows a database-specific error with setup guidance.
      *
@@ -1333,14 +1435,10 @@ public class InventoryDashboardApp extends Application {
         return String.format("$%.2f", amount);
     }
 
-    /**
-     * Launches the JavaFX application.
-     *
-     * @param args command-line arguments passed by Java
-     */
-    public static void main(String[] args) {
-        launch(args);
-    }
+
+    // public static void main(String[] args) {
+    //     launch(args);
+    // }
 
     @FunctionalInterface
     private interface ValueProvider<T> {
