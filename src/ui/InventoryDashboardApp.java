@@ -1182,17 +1182,29 @@ public class InventoryDashboardApp {
             }
 
             Supplier supplier = buildSupplierFromForm();
-            ProductItem product = new ProductItem(requireValue(productIdField, "Product ID"),
-                    requireValue(productNameField, "Product name"),
-                    descriptionArea.getText().trim(), supplier);
+            double pricePerItem = parsePricePerItem();
 
-            return new InventoryItem(requireValue(inventoryIdField, "Inventory ID"),
-                    requireValue(colorField, "Color"), requireValue(sizeField, "Size"),
-                    quantity, reorderLevel, product);
+            ProductItem product = new ProductItem(
+                requireValue(productIdField, "Product ID"),
+                requireValue(productNameField, "Product name"),
+                descriptionArea.getText().trim(),
+                pricePerItem,
+                supplier
+            );
+
+            return new InventoryItem(
+                requireValue(inventoryIdField, "Inventory ID"),
+                requireValue(colorField, "Color"),
+                requireValue(sizeField, "Size"),
+                quantity,
+                reorderLevel,
+                product
+            );
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("Quantity and reorder level must be whole numbers.");
         }
     }
+    
     private void reorderSelectedItem() {
         InventoryItem selectedItem = inventoryTable.getSelectionModel().getSelectedItem();
 
