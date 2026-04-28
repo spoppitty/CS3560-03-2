@@ -200,8 +200,13 @@ public class InventoryDashboardApp {
         });
         logoutButton.setDisable(currentUser == null);
 
-        VBox sessionBox = new VBox(6, userLabel, logoutButton);
-        sessionBox.setAlignment(Pos.CENTER_RIGHT);
+        Button salesButton = createSecondaryButton("Go to Sales");
+        salesButton.setOnAction(e -> {
+            app.showSales();
+        });
+
+        VBox sessionBox = new VBox(6, userLabel, logoutButton, salesButton);
+        sessionBox.setAlignment(Pos.CENTER);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
