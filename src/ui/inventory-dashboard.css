@@ -82,6 +82,16 @@
     -fx-border-width: 2 0 0 0;
 }
 
+.main-tabs .tab:focused,
+.main-tabs .tab:selected:focused {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.main-tabs .tab:focused .focus-indicator {
+    -fx-border-color: transparent;
+}
+
 .main-tabs .tab-label {
     -fx-font-size: 15px;
     -fx-font-weight: 600;
@@ -152,6 +162,22 @@
 .combo-box-base:focused {
     -fx-border-color: #3b82f6;
     -fx-effect: dropshadow(gaussian, rgba(59, 130, 246, 0.22), 7, 0.25, 0, 0);
+}
+
+.text-area {
+    -fx-padding: 0;
+}
+
+.text-area .content {
+    -fx-background-color: white;
+    -fx-background-radius: 6;
+    -fx-border-color: transparent;
+    -fx-padding: 8 11 8 11;
+}
+
+.text-area:focused .content {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
 }
 
 .data-table {

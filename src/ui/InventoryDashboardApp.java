@@ -313,16 +313,16 @@ public class InventoryDashboardApp {
         Button addButton = createPrimaryButton("Add Item");
         addButton.setOnAction(event -> addItem());
 
-        Button updateButton = createSecondaryButton("Update Quantity");
+        Button updateButton = createPrimaryButton("Update Quantity");
         updateButton.setOnAction(event -> updateSelectedQuantity());
 
         Button pdfButton = createPrimaryButton("Report Low Stock PDF");
         pdfButton.setOnAction(e -> generateLowStockPdf());
 
-        Button removeButton = createSecondaryButton("Remove Selected");
+        Button removeButton = createPrimaryButton("Remove Selected");
         removeButton.setOnAction(event -> removeSelectedItem());
 
-        Button reorderButton = createSecondaryButton("Reorder");
+        Button reorderButton = createPrimaryButton("Reorder");
         reorderButton.setOnAction(event -> reorderSelectedItem());
 
         ToolBar toolbar = new ToolBar(addButton, updateButton, pdfButton, reorderButton, removeButton);
@@ -688,17 +688,10 @@ public class InventoryDashboardApp {
         Button addButton = createPrimaryButton("Add Supplier");
         addButton.setOnAction(event -> addSupplier());
 
-        Button updateButton = createSecondaryButton("Update Supplier");
+        Button updateButton = createPrimaryButton("Update Supplier");
         updateButton.setOnAction(event -> updateSelectedSupplier());
 
-        Button loadButton = createPrimaryButton("Load Into Form");
-        loadButton.setOnAction(event ->
-            loadSupplierIntoForm(supplierTable.getSelectionModel().getSelectedItem()));
-
-        Button clearButton = createSecondaryButton("Clear Form");
-        clearButton.setOnAction(event -> clearSupplierForm());
-
-        ToolBar toolbar = new ToolBar(addButton, updateButton, loadButton, clearButton);
+        ToolBar toolbar = new ToolBar(addButton, updateButton);
         toolbar.getStyleClass().add("action-toolbar");
         return toolbar;
     }
@@ -749,6 +742,15 @@ public class InventoryDashboardApp {
         Label title = new Label("Supplier Form");
         title.getStyleClass().add("panel-title");
 
+        Button clearHeaderButton = createSecondaryButton("Clear Form");
+        clearHeaderButton.setOnAction(event -> clearSupplierForm());
+
+        Region titleSpacer = new Region();
+        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+
+        HBox titleRow = new HBox(12, title, titleSpacer, clearHeaderButton);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
         Label description = new Label(
             "Use this form to add a new supplier or update an existing supplier.");
         description.setWrapText(true);
@@ -775,14 +777,10 @@ public class InventoryDashboardApp {
         updateButton.setMaxWidth(Double.MAX_VALUE);
         updateButton.setOnAction(event -> updateSelectedSupplier());
 
-        Button clearButton = createSecondaryButton("Reset Form");
-        clearButton.setMaxWidth(Double.MAX_VALUE);
-        clearButton.setOnAction(event -> clearSupplierForm());
-
-        VBox actions = new VBox(10, addButton, updateButton, clearButton);
+        VBox actions = new VBox(10, addButton, updateButton);
         actions.getStyleClass().add("form-actions");
 
-        VBox panel = new VBox(14, title, description, fields, actions);
+        VBox panel = new VBox(14, titleRow, description, fields, actions);
         panel.setPrefWidth(400);
         panel.getStyleClass().add("side-panel");
 
