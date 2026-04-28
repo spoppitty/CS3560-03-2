@@ -16,7 +16,7 @@ public class LoginDashboard {
     public static Scene create(Stage stage, InventorySubsystemApp app) {
 
         Label title = new Label("Login");
-        title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
+        title.getStyleClass().add("app-title");
 
         TextField username = new TextField();
         username.setPromptText("Username");
@@ -25,14 +25,18 @@ public class LoginDashboard {
         password.setPromptText("Password");
 
         Button login = new Button("Login");
+        login.getStyleClass().add("primary-button");
 
         Button createAccount = new Button("Create Account");
+        createAccount.getStyleClass().add("secondary-button");
 
         Label status = new Label();
+        status.getStyleClass().add("panel-description");
 
         VBox layout = new VBox(12, title, username, password, login, createAccount, status);
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(30));
+        layout.getStyleClass().addAll("app-root", "login-card");
 
         login.setOnAction(e -> {
 
@@ -116,6 +120,11 @@ public class LoginDashboard {
                     });
         });
 
-        return new Scene(layout, 400, 300);
+        Scene scene = new Scene(layout, 440, 360);
+        java.net.URL stylesheet = LoginDashboard.class.getResource("/ui/inventory-dashboard.css");
+        if (stylesheet != null) {
+            scene.getStylesheets().add(stylesheet.toExternalForm());
+        }
+        return scene;
         }
     }

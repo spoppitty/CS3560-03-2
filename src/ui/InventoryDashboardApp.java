@@ -2,9 +2,9 @@ package ui;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 
-import javafx.application.Application;
 import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -15,6 +15,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SelectionMode;
@@ -27,6 +28,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -51,8 +53,6 @@ import service.ShipmentService;
 /**
  * JavaFX dashboard for the inventory subsystem.
  */
-import javafx.application.Application;
-
 public class InventoryDashboardApp {
     /**
      * Service used by the UI for all inventory operations.
@@ -128,11 +128,12 @@ public class InventoryDashboardApp {
     private TextField reorderLevelField;
 
     private static final String INVENTORY_SEARCH_PROMPT =
-            "Search by inventory ID, product, description, supplier, color, or size";
+            "Search by product name, ID, supplier, color, or size";
     private static final String SHIPMENT_SEARCH_PROMPT =
             "Search by shipment, order, inventory, product, supplier, or status";
     private static final String SUPPLIER_SEARCH_PROMPT =
             "Search by supplier ID, name, email, contact, or address";
+    private static final String STYLESHEET = "/ui/inventory-dashboard.css";
 
     /**
      * JavaFX entry point that builds the window and loads inventory from MySQL.
@@ -142,12 +143,13 @@ public class InventoryDashboardApp {
     // @Override
     public Scene createScene(Stage stage, InventorySubsystemApp app) {
         BorderPane root = new BorderPane();
+        root.getStyleClass().add("app-root");
         root.setTop(createHeader(app));
         root.setCenter(createContent());
         root.setBottom(createFooter());
-        root.setStyle("-fx-background-color: linear-gradient(to bottom, #f7f8fc, #eef2f7);");
 
         Scene scene = new Scene(root, 1400, 860);
+        applyStylesheet(scene);
         // stage.setTitle("Department Store Inventory Dashboard");
         // stage.setScene(scene);
         // stage.show();
@@ -164,11 +166,12 @@ public class InventoryDashboardApp {
      */
     private VBox createHeader(InventorySubsystemApp app) {
         Label title = new Label("Department Store Inventory Dashboard");
-        title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
+        title.getStyleClass().add("app-title");
 
         searchField = new TextField();
         searchField.setPromptText(INVENTORY_SEARCH_PROMPT);
-        searchField.setPrefWidth(460);
+        searchField.getStyleClass().add("search-field");
+        searchField.setPrefWidth(620);
         searchField.setOnAction(event -> applyActiveSearch());
 
         Button searchButton = createPrimaryButton("Search");
@@ -188,7 +191,7 @@ public class InventoryDashboardApp {
                 : "Not logged in"
          );
 
-        userLabel.setStyle("-fx-text-fill: #17324d; -fx-font-weight: bold;");
+        userLabel.getStyleClass().add("user-label");
 
         Button logoutButton = createSecondaryButton("Logout");
         logoutButton.setOnAction(e -> {
@@ -203,12 +206,19 @@ public class InventoryDashboardApp {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox toolbar = new HBox(10, searchField, searchButton, resetButton, spacer, createSummaryCard("Items"), sessionBox);
-        toolbar.setAlignment(Pos.CENTER_LEFT);
+        HBox searchBar = new HBox(12, searchField, searchButton, resetButton);
+        searchBar.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        VBox header = new VBox(10, title, toolbar);
-        header.setPadding(new Insets(20, 24, 18, 24));
-        header.setStyle("-fx-background-color: white; -fx-border-color: #d7dfeb; -fx-border-width: 0 0 1 0;");
+        HBox headerTop = new HBox(16, title, spacer, createSummaryCard("Items"), sessionBox);
+        headerTop.setAlignment(Pos.CENTER_LEFT);
+
+        HBox toolbar = new HBox(searchBar);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(searchBar, Priority.ALWAYS);
+
+        VBox header = new VBox(18, headerTop, toolbar);
+        header.getStyleClass().add("app-header");
         return header;
     }
 
@@ -220,19 +230,18 @@ public class InventoryDashboardApp {
      */
     private VBox createSummaryCard(String label) {
         Label name = new Label(label);
-        name.setStyle("-fx-font-size: 13px; -fx-text-fill: #5e7389;");
+        name.getStyleClass().add("summary-label");
 
         Label value = new Label("0");
-        value.setStyle("-fx-font-size: 34px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
+        value.getStyleClass().add("summary-value");
 
         totalItemsValue = value;
 
         VBox card = new VBox(4, name, value);
         card.setPadding(new Insets(16, 18, 16, 18));
-        card.setMinWidth(138);
-        card.setMinHeight(108);
-        card.setStyle("-fx-background-color: #f4f7fb; -fx-background-radius: 10; -fx-border-color: #d7dfeb;"
-                + " -fx-border-radius: 10;");
+        card.setMinWidth(112);
+        card.setMinHeight(86);
+        card.getStyleClass().add("summary-card");
         return card;
     }
 
@@ -245,7 +254,7 @@ public class InventoryDashboardApp {
         inventoryTable = buildInventoryTable();
 
         VBox workspace = new VBox(16, createInventoryToolbar(), inventoryTable);
-        workspace.setPadding(new Insets(20));
+        workspace.getStyleClass().add("content-workspace");
         VBox.setVgrow(inventoryTable, Priority.ALWAYS);
 
         BorderPane inventoryTabLayout = new BorderPane();
@@ -265,6 +274,7 @@ public class InventoryDashboardApp {
         shipmentsTab.setClosable(false);
 
         mainTabs = new TabPane(inventoryTab, suppliersTab, shipmentsTab);
+        mainTabs.getStyleClass().add("main-tabs");
         mainTabs.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
             searchField.clear();
             updateSearchPrompt();
@@ -284,9 +294,10 @@ public class InventoryDashboardApp {
         receiveButton.setOnAction(event -> receiveSelectedShipment());
 
         ToolBar shipmentToolbar = new ToolBar(receiveButton);
+        shipmentToolbar.getStyleClass().add("action-toolbar");
 
         VBox workspace = new VBox(16, shipmentToolbar, shipmentTable);
-        workspace.setPadding(new Insets(20));
+        workspace.getStyleClass().add("content-workspace");
         VBox.setVgrow(shipmentTable, Priority.ALWAYS);
 
         BorderPane layout = new BorderPane(workspace);
@@ -305,7 +316,7 @@ public class InventoryDashboardApp {
         Button updateButton = createSecondaryButton("Update Quantity");
         updateButton.setOnAction(event -> updateSelectedQuantity());
 
-        Button pdfButton = createPrimaryButton("Export Low Stock PDF");
+        Button pdfButton = createPrimaryButton("Report Low Stock PDF");
         pdfButton.setOnAction(e -> generateLowStockPdf());
 
         Button removeButton = createSecondaryButton("Remove Selected");
@@ -320,7 +331,10 @@ public class InventoryDashboardApp {
         Button reorderButton = createSecondaryButton("Reorder");
         reorderButton.setOnAction(event -> reorderSelectedItem());
 
-        return new ToolBar(addButton, updateButton, pdfButton, reorderButton, removeButton, new Separator(), loadSelectedButton, clearButton);
+        ToolBar toolbar = new ToolBar(addButton, updateButton, pdfButton, reorderButton, removeButton,
+                new Separator(), loadSelectedButton, clearButton);
+        toolbar.getStyleClass().add("action-toolbar");
+        return toolbar;
     }
 
     /**
@@ -330,12 +344,12 @@ public class InventoryDashboardApp {
      */
     private VBox createFormPanel() {
         Label title = new Label("Inventory Item Form");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
+        title.getStyleClass().add("panel-title");
 
         Label description = new Label(
                 "Use this form to add a new catalog item or update the quantity for an existing one.");
         description.setWrapText(true);
-        description.setStyle("-fx-font-size: 13px; -fx-text-fill: #4f6479;");
+        description.getStyleClass().add("panel-description");
 
         inventoryIdField = createTextField("INV-1004");
         productIdField = createTextField("PROD-1004");
@@ -345,6 +359,7 @@ public class InventoryDashboardApp {
         descriptionArea.setPromptText("Brief product description");
         descriptionArea.setPrefRowCount(3);
         descriptionArea.setWrapText(true);
+        descriptionArea.setMaxWidth(Double.MAX_VALUE);
 
         supplierComboBox = new ComboBox<>(supplierOptions);
         supplierComboBox.setPromptText("Select a supplier");
@@ -358,31 +373,24 @@ public class InventoryDashboardApp {
         reorderLevelField = createTextField("10");
 
         GridPane grid = new GridPane();
+        grid.getStyleClass().add("form-grid");
         grid.setHgap(12);
-        grid.setVgap(10);
-        grid.add(createFieldLabel("Inventory ID"), 0, 0);
-        grid.add(inventoryIdField, 1, 0);
-        grid.add(createFieldLabel("Product ID"), 0, 1);
-        grid.add(productIdField, 1, 1);
-        grid.add(createFieldLabel("Product Name"), 0, 2);
-        grid.add(productNameField, 1, 2);
-        grid.add(createFieldLabel("Price Per Item"), 0, 3);
-        grid.add(pricePerItemField, 1, 3);
-        grid.add(createFieldLabel("Description"), 0, 4);
-        grid.add(descriptionArea, 1, 4);
-        grid.add(createFieldLabel("Supplier"), 0, 5);
-        grid.add(supplierComboBox, 1, 5);
-        grid.add(manageSuppliersButton, 2, 5);
-        grid.add(createFieldLabel("Color"), 0, 6);
-        grid.add(colorField, 1, 6);
-        grid.add(createFieldLabel("Size"), 0, 7);
-        grid.add(sizeField, 1, 7);
-        grid.add(createFieldLabel("Quantity"), 0, 8);
-        grid.add(quantityField, 1, 8);
-        grid.add(createFieldLabel("Reorder Level"), 0, 9);
-        grid.add(reorderLevelField, 1, 9);
+        grid.setVgap(14);
+        applyEqualColumns(grid, 3);
+        grid.add(createField("Inventory ID", inventoryIdField), 0, 0);
+        grid.add(createField("Product ID", productIdField), 1, 0);
+        grid.add(createField("Price", pricePerItemField), 2, 0);
+        grid.add(createField("Product Name", productNameField), 0, 1, 3, 1);
+        grid.add(createField("Description", descriptionArea), 0, 2, 3, 1);
 
-        ColumnConstraintsBuilder.apply(grid);
+        HBox supplierRow = new HBox(10, supplierComboBox, manageSuppliersButton);
+        supplierRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(supplierComboBox, Priority.ALWAYS);
+        grid.add(createField("Supplier", supplierRow), 0, 3, 3, 1);
+        grid.add(createField("Color", colorField), 0, 4);
+        grid.add(createField("Size", sizeField), 1, 4, 2, 1);
+        grid.add(createField("Quantity", quantityField), 0, 5);
+        grid.add(createField("Reorder Level", reorderLevelField), 1, 5, 2, 1);
 
         Button saveButton = createPrimaryButton("Save Item");
         saveButton.setMaxWidth(Double.MAX_VALUE);
@@ -397,12 +405,11 @@ public class InventoryDashboardApp {
         clearButton.setOnAction(event -> clearForm());
 
         VBox actions = new VBox(10, saveButton, quantityButton, clearButton);
+        actions.getStyleClass().add("form-actions");
 
         VBox panel = new VBox(14, title, description, grid, actions);
         panel.setPrefWidth(400);
-        panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
-                + " -fx-border-radius: 14;");
+        panel.getStyleClass().add("side-panel");
         return panel;
     }
 
@@ -419,8 +426,8 @@ public class InventoryDashboardApp {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setPannable(true);
-        scrollPane.setPrefWidth(430);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background-insets: 0;");
+        scrollPane.setPrefWidth(440);
+        scrollPane.getStyleClass().add("side-panel-scroll");
         scrollPane.viewportBoundsProperty().addListener((observable, oldBounds, newBounds) ->
                 formPanel.setPrefWidth(Math.max(400, newBounds.getWidth() - 2)));
         return scrollPane;
@@ -434,15 +441,15 @@ public class InventoryDashboardApp {
     private TableView<InventoryItem> buildInventoryTable() {
         TableView<InventoryItem> table = createBaseTable();
         table.getColumns().add(createTextColumn("Inventory ID", item -> item.getInventoryID(), 105));
-        table.getColumns().add(createTextColumn("Product ID", item -> item.getProductItem().getProductID(), 95));
-        table.getColumns().add(createTextColumn("Product Name", item -> item.getProductItem().getProductName(), 150));
+        table.getColumns().add(createTextColumn("Product ID", item -> item.getProductItem().getProductID(), 130));
+        table.getColumns().add(createTextColumn("Product Name", item -> item.getProductItem().getProductName(), 135));
         table.getColumns().add(createTextColumn("Price", item -> formatCurrency(item.getProductItem().getPricePerItem()), 90));
         table.getColumns().add(createTextColumn("Supplier", item -> item.getProductItem().getSupplier().getName(), 140));
-        table.getColumns().add(createTextColumn("Color", InventoryItem::getColor, 90));
+        table.getColumns().add(createTextColumn("Color", InventoryItem::getColor, 75));
         table.getColumns().add(createTextColumn("Size", InventoryItem::getSize, 80));
         table.getColumns().add(createIntegerColumn("Quantity", InventoryItem::getQuantityOnHand, 90));
-        table.getColumns().add(createIntegerColumn("Reorder", InventoryItem::getReorderLevel, 90));
-        table.getColumns().add(createTextColumn("Status", item -> item.isLowStock() ? "Low Stock" : "Healthy", 110));
+        table.getColumns().add(createIntegerColumn("Reorder", InventoryItem::getReorderLevel, 72));
+        table.getColumns().add(createInventoryStatusColumn());
         table.setItems(inventoryRows);
         table.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldItem, newItem) -> loadSelectedIntoForm(newItem));
@@ -459,8 +466,7 @@ public class InventoryDashboardApp {
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPlaceholder(new Label("No shipments to display."));
-        table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
-                + " -fx-border-radius: 14;");
+        table.getStyleClass().add("data-table");
         table.getColumns().add(createShipmentTextColumn("Shipment ID", ShipmentRecord::getShipmentID, 120));
         table.getColumns().add(createShipmentTextColumn("Order ID", ShipmentRecord::getPurchaseOrderID, 120));
         table.getColumns().add(createShipmentTextColumn("Inventory ID", ShipmentRecord::getInventoryID, 120));
@@ -471,7 +477,7 @@ public class InventoryDashboardApp {
         table.getColumns().add(createShipmentIntegerColumn("Quantity", ShipmentRecord::getShipmentQuantity, 90));
         table.getColumns().add(createShipmentTextColumn("Unit Price", item -> formatCurrency(item.getPricePerItem()), 100));
         table.getColumns().add(createShipmentTextColumn("Total Price", item -> formatCurrency(item.getTotalPrice()), 110));
-        table.getColumns().add(createShipmentTextColumn("Status", ShipmentRecord::getShipmentStatus, 110));
+        table.getColumns().add(createShipmentStatusColumn());
         table.setItems(shipmentRows);
         return table;
     }
@@ -486,8 +492,7 @@ public class InventoryDashboardApp {
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);   //CONSTRAINED_RESIZE_POLICY Had to Change
         table.setPlaceholder(new Label("No inventory items to display."));
-        table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
-                + " -fx-border-radius: 14;");
+        table.getStyleClass().add("data-table");
         return table;
     }
 
@@ -521,6 +526,30 @@ public class InventoryDashboardApp {
         return column;
     }
 
+    private TableColumn<InventoryItem, String> createInventoryStatusColumn() {
+        TableColumn<InventoryItem, String> column =
+                createTextColumn("Status", item -> item.isLowStock() ? "Low Stock" : "Healthy", 128);
+        column.setCellFactory(tableColumn -> new javafx.scene.control.TableCell<>() {
+            private final Label badge = new Label();
+
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                badge.getStyleClass().removeAll("status-badge", "status-healthy", "status-low", "status-shipped");
+                setText(null);
+                if (empty || status == null) {
+                    setGraphic(null);
+                } else {
+                    badge.setText(status);
+                    badge.getStyleClass().addAll("status-badge",
+                            "Low Stock".equals(status) ? "status-low" : "status-healthy");
+                    setGraphic(badge);
+                }
+            }
+        });
+        return column;
+    }
+
     /**
      * Creates a shipment table text column.
      */
@@ -543,6 +572,28 @@ public class InventoryDashboardApp {
         return column;
     }
 
+    private TableColumn<ShipmentRecord, String> createShipmentStatusColumn() {
+        TableColumn<ShipmentRecord, String> column = createShipmentTextColumn("Status", ShipmentRecord::getShipmentStatus, 110);
+        column.setCellFactory(tableColumn -> new javafx.scene.control.TableCell<>() {
+            private final Label badge = new Label();
+
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+                badge.getStyleClass().removeAll("status-badge", "status-healthy", "status-low", "status-shipped");
+                setText(null);
+                if (empty || status == null) {
+                    setGraphic(null);
+                } else {
+                    badge.setText(status);
+                    badge.getStyleClass().addAll("status-badge", "status-shipped");
+                    setGraphic(badge);
+                }
+            }
+        });
+        return column;
+    }
+
     /**
      * Builds the footer where status and error messages are shown.
      *
@@ -553,9 +604,8 @@ public class InventoryDashboardApp {
         statusLabel.setTextFill(Color.web("#4f6479"));
 
         HBox footer = new HBox(statusLabel);
-        footer.setPadding(new Insets(10, 24, 14, 24));
         footer.setAlignment(Pos.CENTER_LEFT);
-        footer.setStyle("-fx-background-color: white; -fx-border-color: #d7dfeb; -fx-border-width: 1 0 0 0;");
+        footer.getStyleClass().add("app-footer");
         return footer;
     }
 
@@ -618,7 +668,7 @@ public class InventoryDashboardApp {
         supplierTable = buildSupplierTable();
 
         VBox workspace = new VBox(16, createSupplierToolbar(), supplierTable);
-        workspace.setPadding(new Insets(20));
+        workspace.getStyleClass().add("content-workspace");
         VBox.setVgrow(supplierTable, Priority.ALWAYS);
 
         BorderPane layout = new BorderPane();
@@ -641,14 +691,16 @@ public class InventoryDashboardApp {
         Button updateButton = createSecondaryButton("Update Supplier");
         updateButton.setOnAction(event -> updateSelectedSupplier());
 
-        Button loadButton = createSecondaryButton("Load Into Form");
+        Button loadButton = createPrimaryButton("Load Into Form");
         loadButton.setOnAction(event ->
             loadSupplierIntoForm(supplierTable.getSelectionModel().getSelectedItem()));
 
         Button clearButton = createSecondaryButton("Clear Form");
         clearButton.setOnAction(event -> clearSupplierForm());
 
-        return new ToolBar(addButton, updateButton, new Separator(), loadButton, clearButton);
+        ToolBar toolbar = new ToolBar(addButton, updateButton, loadButton, clearButton);
+        toolbar.getStyleClass().add("action-toolbar");
+        return toolbar;
     }
 
     /**
@@ -659,8 +711,7 @@ public class InventoryDashboardApp {
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setPlaceholder(new Label("No suppliers to display."));
-        table.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
-            + " -fx-border-radius: 14;");
+        table.getStyleClass().add("data-table");
 
         TableColumn<Supplier, String> idColumn = new TableColumn<>("Supplier ID");
         idColumn.setCellValueFactory(cell ->
@@ -696,12 +747,12 @@ public class InventoryDashboardApp {
      */
     private VBox createSupplierFormPanel() {
         Label title = new Label("Supplier Form");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #17324d;");
+        title.getStyleClass().add("panel-title");
 
         Label description = new Label(
             "Use this form to add a new supplier or update an existing supplier.");
         description.setWrapText(true);
-        description.setStyle("-fx-font-size: 13px; -fx-text-fill: #4f6479;");
+        description.getStyleClass().add("panel-description");
 
         supplierIdFormField = createTextField("SUP-204");
         supplierNameFormField = createTextField("Bright Apparel");
@@ -709,22 +760,12 @@ public class InventoryDashboardApp {
         supplierContactFormField = createTextField("Jordan Lee");
         supplierAddressFormField = createTextField("123 Supply Rd, Salt Lake City, UT");
 
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(10);
-
-        grid.add(createFieldLabel("Supplier ID"), 0, 0);
-        grid.add(supplierIdFormField, 1, 0);
-        grid.add(createFieldLabel("Supplier Name"), 0, 1);
-        grid.add(supplierNameFormField, 1, 1);
-        grid.add(createFieldLabel("Supplier Email"), 0, 2);
-        grid.add(supplierEmailFormField, 1, 2);
-        grid.add(createFieldLabel("Contact Name"), 0, 3);
-        grid.add(supplierContactFormField, 1, 3);
-        grid.add(createFieldLabel("Supplier Address"), 0, 4);
-        grid.add(supplierAddressFormField, 1, 4);
-
-        ColumnConstraintsBuilder.apply(grid);
+        VBox fields = new VBox(14,
+                createField("Supplier ID", supplierIdFormField),
+                createField("Supplier Name", supplierNameFormField),
+                createField("Supplier Email", supplierEmailFormField),
+                createField("Contact Name", supplierContactFormField),
+                createField("Supplier Address", supplierAddressFormField));
 
         Button addButton = createPrimaryButton("Save Supplier");
         addButton.setMaxWidth(Double.MAX_VALUE);
@@ -739,12 +780,11 @@ public class InventoryDashboardApp {
         clearButton.setOnAction(event -> clearSupplierForm());
 
         VBox actions = new VBox(10, addButton, updateButton, clearButton);
+        actions.getStyleClass().add("form-actions");
 
-        VBox panel = new VBox(14, title, description, grid, actions);
+        VBox panel = new VBox(14, title, description, fields, actions);
         panel.setPrefWidth(400);
-        panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #d7dfeb;"
-            + " -fx-border-radius: 14;");
+        panel.getStyleClass().add("side-panel");
 
         return panel;
     }
@@ -756,8 +796,8 @@ public class InventoryDashboardApp {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setPannable(true);
-        scrollPane.setPrefWidth(430);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background-insets: 0;");
+        scrollPane.setPrefWidth(420);
+        scrollPane.getStyleClass().add("side-panel-scroll");
         scrollPane.viewportBoundsProperty().addListener(
             (observable, oldBounds, newBounds) ->
                 formPanel.setPrefWidth(Math.max(400, newBounds.getWidth() - 2)));
@@ -1301,8 +1341,22 @@ public class InventoryDashboardApp {
      */
     private Label createFieldLabel(String text) {
         Label label = new Label(text);
-        label.setStyle("-fx-font-weight: bold; -fx-text-fill: #334a60;");
+        label.getStyleClass().add("field-label");
         return label;
+    }
+
+    private VBox createField(String labelText, Control control) {
+        control.setMaxWidth(Double.MAX_VALUE);
+        VBox field = new VBox(6, createFieldLabel(labelText), control);
+        field.getStyleClass().add("field-stack");
+        return field;
+    }
+
+    private VBox createField(String labelText, HBox controlRow) {
+        controlRow.setMaxWidth(Double.MAX_VALUE);
+        VBox field = new VBox(6, createFieldLabel(labelText), controlRow);
+        field.getStyleClass().add("field-stack");
+        return field;
     }
 
     /**
@@ -1314,6 +1368,7 @@ public class InventoryDashboardApp {
     private TextField createTextField(String prompt) {
         TextField field = new TextField();
         field.setPromptText(prompt);
+        field.setMaxWidth(Double.MAX_VALUE);
         return field;
     }
 
@@ -1342,8 +1397,7 @@ public class InventoryDashboardApp {
      */
     private Button createPrimaryButton(String text) {
         Button button = new Button(text);
-        button.setStyle("-fx-background-color: #1d6fdc; -fx-text-fill: white; -fx-font-weight: bold;"
-                + " -fx-background-radius: 8;");
+        button.getStyleClass().add("primary-button");
         return button;
     }
 
@@ -1355,9 +1409,25 @@ public class InventoryDashboardApp {
      */
     private Button createSecondaryButton(String text) {
         Button button = new Button(text);
-        button.setStyle("-fx-background-color: #eef3fb; -fx-text-fill: #17324d; -fx-font-weight: bold;"
-                + " -fx-background-radius: 8; -fx-border-color: #cdd8e8; -fx-border-radius: 8;");
+        button.getStyleClass().add("secondary-button");
         return button;
+    }
+
+    private void applyStylesheet(Scene scene) {
+        URL stylesheet = getClass().getResource(STYLESHEET);
+        if (stylesheet != null) {
+            scene.getStylesheets().add(stylesheet.toExternalForm());
+        }
+    }
+
+    private void applyEqualColumns(GridPane grid, int count) {
+        grid.getColumnConstraints().clear();
+        for (int i = 0; i < count; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setPercentWidth(100.0 / count);
+            column.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(column);
+        }
     }
 
     /**
@@ -1484,29 +1554,4 @@ public class InventoryDashboardApp {
         int get(ShipmentRecord item);
     }
 
-    /**
-     * Keeps GridPane column setup out of the form-building code.
-     */
-    private static final class ColumnConstraintsBuilder {
-        /**
-         * Prevents creating helper objects because this class only has static behavior.
-         */
-        private ColumnConstraintsBuilder() {
-        }
-
-        /**
-         * Applies consistent two-column sizing to the form grid.
-         *
-         * @param grid form grid to configure
-         */
-        private static void apply(GridPane grid) {
-            javafx.scene.layout.ColumnConstraints first = new javafx.scene.layout.ColumnConstraints();
-            first.setMinWidth(110);
-
-            javafx.scene.layout.ColumnConstraints second = new javafx.scene.layout.ColumnConstraints();
-            second.setHgrow(Priority.ALWAYS);
-
-            grid.getColumnConstraints().addAll(first, second);
-        }
-    }
 }
