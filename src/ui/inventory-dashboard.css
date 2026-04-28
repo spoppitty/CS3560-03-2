@@ -175,6 +175,10 @@
     -fx-size: 42px;
 }
 
+.data-table .column-header {
+    -fx-padding: 0 12 0 12;
+}
+
 .data-table .column-header .label {
     -fx-alignment: center-left;
     -fx-font-size: 13px;

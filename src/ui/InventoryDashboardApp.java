@@ -307,7 +307,7 @@ public class InventoryDashboardApp {
     /**
      * Builds the toolbar of inventory actions.
      *
-     * @return toolbar with add, update, remove, load, and clear buttons
+     * @return toolbar with add, update, report, reorder, and remove buttons
      */
     private ToolBar createInventoryToolbar() {
         Button addButton = createPrimaryButton("Add Item");
@@ -322,17 +322,10 @@ public class InventoryDashboardApp {
         Button removeButton = createSecondaryButton("Remove Selected");
         removeButton.setOnAction(event -> removeSelectedItem());
 
-        Button loadSelectedButton = createSecondaryButton("Load Into Form");
-        loadSelectedButton.setOnAction(event -> loadSelectedIntoForm(inventoryTable.getSelectionModel().getSelectedItem()));
-
-        Button clearButton = createSecondaryButton("Clear Form");
-        clearButton.setOnAction(event -> clearForm());
-
         Button reorderButton = createSecondaryButton("Reorder");
         reorderButton.setOnAction(event -> reorderSelectedItem());
 
-        ToolBar toolbar = new ToolBar(addButton, updateButton, pdfButton, reorderButton, removeButton,
-                new Separator(), loadSelectedButton, clearButton);
+        ToolBar toolbar = new ToolBar(addButton, updateButton, pdfButton, reorderButton, removeButton);
         toolbar.getStyleClass().add("action-toolbar");
         return toolbar;
     }
@@ -345,6 +338,15 @@ public class InventoryDashboardApp {
     private VBox createFormPanel() {
         Label title = new Label("Inventory Item Form");
         title.getStyleClass().add("panel-title");
+
+        Button clearHeaderButton = createSecondaryButton("Clear Form");
+        clearHeaderButton.setOnAction(event -> clearForm());
+
+        Region titleSpacer = new Region();
+        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+
+        HBox titleRow = new HBox(12, title, titleSpacer, clearHeaderButton);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
 
         Label description = new Label(
                 "Use this form to add a new catalog item or update the quantity for an existing one.");
@@ -385,6 +387,8 @@ public class InventoryDashboardApp {
 
         HBox supplierRow = new HBox(10, supplierComboBox, manageSuppliersButton);
         supplierRow.setAlignment(Pos.CENTER_LEFT);
+        supplierComboBox.setPrefWidth(250);
+        manageSuppliersButton.setMinWidth(160);
         HBox.setHgrow(supplierComboBox, Priority.ALWAYS);
         grid.add(createField("Supplier", supplierRow), 0, 3, 3, 1);
         grid.add(createField("Color", colorField), 0, 4);
@@ -400,14 +404,10 @@ public class InventoryDashboardApp {
         quantityButton.setMaxWidth(Double.MAX_VALUE);
         quantityButton.setOnAction(event -> updateSelectedQuantity());
 
-        Button clearButton = createSecondaryButton("Reset Form");
-        clearButton.setMaxWidth(Double.MAX_VALUE);
-        clearButton.setOnAction(event -> clearForm());
-
-        VBox actions = new VBox(10, saveButton, quantityButton, clearButton);
+        VBox actions = new VBox(10, saveButton, quantityButton);
         actions.getStyleClass().add("form-actions");
 
-        VBox panel = new VBox(14, title, description, grid, actions);
+        VBox panel = new VBox(14, titleRow, description, grid, actions);
         panel.setPrefWidth(400);
         panel.getStyleClass().add("side-panel");
         return panel;
@@ -440,15 +440,15 @@ public class InventoryDashboardApp {
      */
     private TableView<InventoryItem> buildInventoryTable() {
         TableView<InventoryItem> table = createBaseTable();
-        table.getColumns().add(createTextColumn("Inventory ID", item -> item.getInventoryID(), 105));
-        table.getColumns().add(createTextColumn("Product ID", item -> item.getProductItem().getProductID(), 130));
+        table.getColumns().add(createTextColumn("Inventory ID", item -> item.getInventoryID(), 102));
+        table.getColumns().add(createTextColumn("Product ID", item -> item.getProductItem().getProductID(), 115));
         table.getColumns().add(createTextColumn("Product Name", item -> item.getProductItem().getProductName(), 135));
         table.getColumns().add(createTextColumn("Price", item -> formatCurrency(item.getProductItem().getPricePerItem()), 90));
         table.getColumns().add(createTextColumn("Supplier", item -> item.getProductItem().getSupplier().getName(), 140));
         table.getColumns().add(createTextColumn("Color", InventoryItem::getColor, 75));
         table.getColumns().add(createTextColumn("Size", InventoryItem::getSize, 80));
         table.getColumns().add(createIntegerColumn("Quantity", InventoryItem::getQuantityOnHand, 90));
-        table.getColumns().add(createIntegerColumn("Reorder", InventoryItem::getReorderLevel, 72));
+        table.getColumns().add(createIntegerColumn("Reorder", InventoryItem::getReorderLevel, 90));
         table.getColumns().add(createInventoryStatusColumn());
         table.setItems(inventoryRows);
         table.getSelectionModel().selectedItemProperty().addListener(
