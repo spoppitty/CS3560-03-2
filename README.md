@@ -10,7 +10,7 @@ Create the database and tables:
 mysql -u root -p < database/schema.sql
 ```
 
-Optional: load the original three inventory examples into MySQL:
+Optional: load the demo inventory, supplier, and shipment examples into MySQL:
 
 ```bash
 mysql -u root -p < database/sample-data.sql
