@@ -27,6 +27,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -83,6 +84,11 @@ public class InventoryDashboardApp {
      * Main table that displays open shipment rows from MySQL.
      */
     private TableView<ShipmentRecord> shipmentTable;
+
+    /**
+     * Button that confirms receipt for the selected shipment row.
+     */
+    private Button receiveShipmentButton;
 
     /**
      * Search box in the header.
@@ -295,10 +301,14 @@ public class InventoryDashboardApp {
      * @return shipments layout
      */
     private BorderPane createShipmentsContent() {
-        Button receiveButton = createPrimaryButton("Confirm Received");
-        receiveButton.setOnAction(event -> receiveSelectedShipment());
+        receiveShipmentButton = createPrimaryButton("Confirm Received");
+        receiveShipmentButton.setDisable(true);
+        receiveShipmentButton.setTooltip(new Tooltip("Select a shipped shipment."));
+        receiveShipmentButton.setOnAction(event -> receiveSelectedShipment());
+        shipmentTable.getSelectionModel().selectedItemProperty()
+                .addListener((observable, oldSelection, newSelection) -> updateReceiveShipmentButtonState());
 
-        ToolBar shipmentToolbar = new ToolBar(receiveButton);
+        ToolBar shipmentToolbar = new ToolBar(receiveShipmentButton);
         shipmentToolbar.getStyleClass().add("action-toolbar");
 
         VBox workspace = new VBox(16, shipmentToolbar, shipmentTable);
@@ -482,6 +492,7 @@ public class InventoryDashboardApp {
         table.getColumns().add(createShipmentIntegerColumn("Quantity", ShipmentRecord::getShipmentQuantity, 90));
         table.getColumns().add(createShipmentTextColumn("Unit Price", item -> formatCurrency(item.getPricePerItem()), 100));
         table.getColumns().add(createShipmentTextColumn("Total Price", item -> formatCurrency(item.getTotalPrice()), 110));
+        table.getColumns().add(createShipmentTextColumn("Delivered", item -> formatDate(item.getDeliveryDate()), 110));
         table.getColumns().add(createShipmentStatusColumn());
         table.setItems(shipmentRows);
         return table;
@@ -585,18 +596,30 @@ public class InventoryDashboardApp {
             @Override
             protected void updateItem(String status, boolean empty) {
                 super.updateItem(status, empty);
-                badge.getStyleClass().removeAll("status-badge", "status-healthy", "status-low", "status-shipped");
+                badge.getStyleClass().removeAll("status-badge", "status-healthy", "status-low",
+                        "status-pending", "status-shipped", "status-received");
                 setText(null);
                 if (empty || status == null) {
                     setGraphic(null);
                 } else {
                     badge.setText(status);
-                    badge.getStyleClass().addAll("status-badge", "status-shipped");
+                    badge.getStyleClass().addAll("status-badge", getShipmentStatusStyleClass(status));
                     setGraphic(badge);
                 }
             }
         });
         return column;
+    }
+
+    private String getShipmentStatusStyleClass(String status) {
+        String normalizedStatus = status.trim().toLowerCase();
+        if ("pending".equals(normalizedStatus)) {
+            return "status-pending";
+        }
+        if ("received".equals(normalizedStatus)) {
+            return "status-received";
+        }
+        return "status-shipped";
     }
 
     /**
@@ -974,6 +997,25 @@ public class InventoryDashboardApp {
             return;
         }
 
+        if (!canReceiveShipment(selectedShipment)) {
+            showError("Shipment cannot be received", "Only shipped shipments can be confirmed as received.");
+            return;
+        }
+
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmation.setTitle("Confirm Shipment Receipt");
+        confirmation.setHeaderText("Receive shipment " + selectedShipment.getShipmentID() + "?");
+        confirmation.setContentText(
+                "Product: " + selectedShipment.getProductName()
+                        + "\nInventory ID: " + selectedShipment.getInventoryID()
+                        + "\nSupplier: " + selectedShipment.getSupplierName()
+                        + "\nQuantity Received: " + selectedShipment.getShipmentQuantity()
+                        + "\n\nInventory quantity will be increased after confirmation."
+        );
+        if (confirmation.showAndWait().filter(response -> response == ButtonType.OK).isEmpty()) {
+            return;
+        }
+
         try {
             shipmentService.receiveShipment(selectedShipment.getShipmentID());
             refreshTables(inventoryService.viewInventory());
@@ -1114,12 +1156,30 @@ public class InventoryDashboardApp {
     private void showOpenShipments(String statusMessage) {
         try {
             shipmentRows.setAll(shipmentService.viewOpenShipments());
+            updateReceiveShipmentButtonState();
             if (statusMessage != null) {
                 setStatus(statusMessage, false);
             }
         } catch (DatabaseException exception) {
             showDatabaseError("Unable to load shipments", exception);
         }
+    }
+
+    private void updateReceiveShipmentButtonState() {
+        if (receiveShipmentButton == null || shipmentTable == null) {
+            return;
+        }
+
+        ShipmentRecord selectedShipment = shipmentTable.getSelectionModel().getSelectedItem();
+        receiveShipmentButton.setDisable(selectedShipment == null || !canReceiveShipment(selectedShipment));
+    }
+
+    private boolean canReceiveShipment(ShipmentRecord shipment) {
+        if (shipment == null || shipment.getShipmentStatus() == null) {
+            return false;
+        }
+
+        return "shipped".equalsIgnoreCase(shipment.getShipmentStatus().trim());
     }
 
     /**
